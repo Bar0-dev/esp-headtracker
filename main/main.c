@@ -26,7 +26,7 @@ ImuConfig_t conf = {
         1<<DATA_RDY_EN|\
         0<<I2C_MST_INT_EN|\
         0<<FIFO_OFLOW_EN,
-    .gyroRangeSetting = GYRO_250DPS,
+    .gyroRangeSetting = GYRO_500DPS,
     .accelRangeSetting = ACCEL_2G,
     .pwrMgmtSetting =
         INTERNAL_CLK<<CLKSEL|\
@@ -40,7 +40,7 @@ void app_main(void)
 {
     imu_init(conf);
     imu_who_am_i();
-    for (int i=0; i<10; i++)
+    while(1)
     {
         imu_read();
     }

@@ -24,28 +24,34 @@ typedef struct
     int16_t x;
     int16_t y;
     int16_t z;
-} AccelData_t;
+} AccelDataRaw_t;
 
 typedef struct 
 {
     int16_t x;
     int16_t y;
     int16_t z;
-} GyroData_t;
+} GyroDataRaw_t;
 
-typedef int16_t TempData_t;
+typedef int16_t TempDataRaw_t;
 
 typedef struct
 {
-    AccelData_t accelData;
-    TempData_t tempData;
-    GyroData_t gyroData;
-} ImuData_t;
+    AccelDataRaw_t accelDataRaw;
+    TempDataRaw_t tempDataRaw;
+    GyroDataRaw_t gyroDataRaw;
+} ImuDataRaw_t;
+
+typedef struct
+{
+
+} GForce_t;
+
 
 void imu_init(ImuConfig_t config);
 void imu_deinit(void);
 void imu_reset(void);
 uint8_t imu_who_am_i(void);
-ImuData_t imu_read(void);
+ImuDataRaw_t imu_read(void);
 
 #endif

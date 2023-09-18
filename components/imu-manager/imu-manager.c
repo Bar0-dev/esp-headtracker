@@ -88,9 +88,9 @@ uint8_t imu_who_am_i()
     return data;
 }
 
-// AccelData_t imu_read_accel(void)
+// AccelDataRaw_t imu_read_accel(void)
 // {
-//     AccelData_t data;
+//     AccelDataRaw_t data;
 //     uint8_t buffer[6];
 //     ESP_ERROR_CHECK(mpu6050_register_read(MPU6050_ACCEL_DATA_ADDR, buffer, 6));
 //     data.x = (uint16_t)(buffer[ACCEL_X_OUT_H]<<8) + buffer[ACCEL_X_OUT_L];
@@ -110,12 +110,15 @@ uint8_t imu_who_am_i()
 // }
 
 static float map_int16_to_range(int16_t value, uint8_t range){
-    return -range + ((value - INT16_MIN) * (range - (-range))) / (INT16_MAX - INT16_MIN);
+    
+    return (float)value;
 }
 
-static int8_t convert_accel_raw_to_G(uint16_t raw){
+static float convert_raw_accel_to_G(uint16_t twosComplement){
     AccelConf_t range = conf.accelRangeSetting;
-    int8_t calc;
+    float calc = 0;
+    int16_t raw = (int16_t)twosComplement;
+
     switch (range)
     {
     case ACCEL_2G:
@@ -133,33 +136,33 @@ static int8_t convert_accel_raw_to_G(uint16_t raw){
     default:
         break;
     }
-    return calc;
+    return raw;
 }
 
-ImuData_t imu_read(void)
+ImuDataRaw_t imu_read(void)
 {
     uint8_t buffer[14];
     uint8_t interruptSignal = 0;
     while (interruptSignal == 0)
     {
         ESP_ERROR_CHECK(mpu6050_register_read(MPU6050_INT_STATUS_ADDR, &interruptSignal, 1));
-        ESP_LOGI(TAG, "Interrupt signal: %u", interruptSignal);
+        // ESP_LOGI(TAG, "Interrupt signal: %u", interruptSignal);
     }
-    ESP_ERROR_CHECK(mpu6050_register_read(MPU6050_INT_STATUS_ADDR, buffer, 14));
-    ImuData_t data = {
-        .accelData.x = (int16_t)((uint16_t)buffer[ACCEL_X_OUT_H]<<8) | buffer[ACCEL_X_OUT_L],
-        .accelData.y = (int16_t)((uint16_t)buffer[ACCEL_Y_OUT_H]<<8) | buffer[ACCEL_Y_OUT_L],
-        .accelData.z = (int16_t)((uint16_t)buffer[ACCEL_Z_OUT_H]<<8) | buffer[ACCEL_Z_OUT_L],
-        .tempData = ((uint16_t)buffer[TEMP_OUT_H]<<8) | buffer[TEMP_OUT_L],
-        .gyroData.x = ((uint16_t)buffer[GYRO_X_OUT_H]<<8) | buffer[GYRO_X_OUT_L],
-        .gyroData.y = ((uint16_t)buffer[GYRO_Y_OUT_H]<<8) | buffer[GYRO_Y_OUT_L],
-        .gyroData.z = ((uint16_t)buffer[GYRO_Z_OUT_H]<<8) | buffer[GYRO_Z_OUT_L],
+    ESP_ERROR_CHECK(mpu6050_register_read(MPU6050_ACCEL_DATA_ADDR, buffer, 14));
+    ImuDataRaw_t data = {
+        .accelDataRaw.x = ((int16_t)buffer[ACCEL_X_OUT_H] << 8) | buffer[ACCEL_X_OUT_L],
+        .accelDataRaw.y = ((int16_t)buffer[ACCEL_Y_OUT_H] << 8) | buffer[ACCEL_Y_OUT_L],
+        .accelDataRaw.z = ((int16_t)buffer[ACCEL_Z_OUT_H] << 8) | buffer[ACCEL_Z_OUT_L],
+        .tempDataRaw = ((int16_t)buffer[TEMP_OUT_H]<<8) | buffer[TEMP_OUT_L],
+        .gyroDataRaw.x = ((int16_t)buffer[GYRO_X_OUT_H]<<8) | buffer[GYRO_X_OUT_L],
+        .gyroDataRaw.y = ((int16_t)buffer[GYRO_Y_OUT_H]<<8) | buffer[GYRO_Y_OUT_L],
+        .gyroDataRaw.z = ((int16_t)buffer[GYRO_Z_OUT_H]<<8) | buffer[GYRO_Z_OUT_L],
     };
     /**
      * Debug ESP_LOGI
     */
-    ESP_LOGI(TAG, "Accel read: %hd, %hd, %hd", data.accelData.x, data.accelData.y, data.accelData.z);
-    ESP_LOGI(TAG, "Temp read: %hd", data.tempData);
+    ESP_LOGI(TAG, "x, y, z:  %d   %d   %d", data.accelDataRaw.x, data.accelDataRaw.y, data.accelDataRaw.z);
+    // ESP_LOGI(TAG, "Temp read: %hd", data.tempDataRaw);
     /**
         * Debug ESP_LOGI
     */

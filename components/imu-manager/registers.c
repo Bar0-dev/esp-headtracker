@@ -149,4 +149,3 @@ typedef enum
 #define MPU6050_FIFO_COUNT          0x72
 
 #define MPU6050_FIFO_R_W            0x74
-
