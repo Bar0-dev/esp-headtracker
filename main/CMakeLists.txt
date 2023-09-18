@@ -1,2 +1,2 @@
-idf_component_register(SRCS "ex-state-machine.c"
+idf_component_register(SRCS "main.c"
                     INCLUDE_DIRS ".")

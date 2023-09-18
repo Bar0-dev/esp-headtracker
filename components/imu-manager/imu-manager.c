@@ -10,6 +10,8 @@ static const char *TAG = "imu-manager";
 #define I2C_MASTER_RX_BUF_DISABLE   0                          /*!< I2C master doesn't need buffer */
 #define I2C_MASTER_TIMEOUT_MS       1000
 
+static ImuConfig_t conf;
+
 /**
  * @brief Read a sequence of bytes from a MPU6050 sensor registers
  */
@@ -64,6 +66,7 @@ void imu_init(ImuConfig_t config)
     ESP_ERROR_CHECK(mpu6050_register_write_byte(MPU6050_ACCEL_CONFIG_ADDR, config.accelRangeSetting<<MPU6050_ACCEL_FS_SEL_OFFSET));
     ESP_ERROR_CHECK(mpu6050_register_write_byte(MPU6050_PWR_MGMT_1_ADDR, config.intPinEnable));
     ESP_LOGI(TAG, "IMU initialized successfully");
+    conf = config;
 }
 
 void imu_deinit(void)
@@ -106,6 +109,33 @@ uint8_t imu_who_am_i()
 //     return data;
 // }
 
+static float map_int16_to_range(int16_t value, uint8_t range){
+    return -range + ((value - INT16_MIN) * (range - (-range))) / (INT16_MAX - INT16_MIN);
+}
+
+static int8_t convert_accel_raw_to_G(uint16_t raw){
+    AccelConf_t range = conf.accelRangeSetting;
+    int8_t calc;
+    switch (range)
+    {
+    case ACCEL_2G:
+        calc = map_int16_to_range(raw, 2);
+        break;
+    case ACCEL_4G:
+        calc = map_int16_to_range(raw, 4);
+        break;
+    case ACCEL_8G:
+        calc = map_int16_to_range(raw, 8);
+        break;
+    case ACCEL_16G:
+        calc = map_int16_to_range(raw, 16);
+        break;
+    default:
+        break;
+    }
+    return calc;
+}
+
 ImuData_t imu_read(void)
 {
     uint8_t buffer[14];
@@ -117,9 +147,9 @@ ImuData_t imu_read(void)
     }
     ESP_ERROR_CHECK(mpu6050_register_read(MPU6050_INT_STATUS_ADDR, buffer, 14));
     ImuData_t data = {
-        .accelData.x = ((uint16_t)buffer[ACCEL_X_OUT_H]<<8) | buffer[ACCEL_X_OUT_L],
-        .accelData.y = ((uint16_t)buffer[ACCEL_Y_OUT_H]<<8) | buffer[ACCEL_Y_OUT_L],
-        .accelData.z = ((uint16_t)buffer[ACCEL_Z_OUT_H]<<8) | buffer[ACCEL_Z_OUT_L],
+        .accelData.x = (int16_t)((uint16_t)buffer[ACCEL_X_OUT_H]<<8) | buffer[ACCEL_X_OUT_L],
+        .accelData.y = (int16_t)((uint16_t)buffer[ACCEL_Y_OUT_H]<<8) | buffer[ACCEL_Y_OUT_L],
+        .accelData.z = (int16_t)((uint16_t)buffer[ACCEL_Z_OUT_H]<<8) | buffer[ACCEL_Z_OUT_L],
         .tempData = ((uint16_t)buffer[TEMP_OUT_H]<<8) | buffer[TEMP_OUT_L],
         .gyroData.x = ((uint16_t)buffer[GYRO_X_OUT_H]<<8) | buffer[GYRO_X_OUT_L],
         .gyroData.y = ((uint16_t)buffer[GYRO_Y_OUT_H]<<8) | buffer[GYRO_Y_OUT_L],
@@ -128,8 +158,8 @@ ImuData_t imu_read(void)
     /**
      * Debug ESP_LOGI
     */
-    ESP_LOGI(TAG, "Accel read: %u, %u, %u", data.accelData.x, data.accelData.y, data.accelData.z);
-    ESP_LOGI(TAG, "Temp read: %u", data.tempData);
+    ESP_LOGI(TAG, "Accel read: %hd, %hd, %hd", data.accelData.x, data.accelData.y, data.accelData.z);
+    ESP_LOGI(TAG, "Temp read: %hd", data.tempData);
     /**
         * Debug ESP_LOGI
     */
