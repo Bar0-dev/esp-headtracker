@@ -30,6 +30,8 @@ ImuConfig_t conf = {
     .gyroRangeSetting = GYRO_500DPS,
     .fChoiceBSetting = FCHOICE_B_DISABLED,
     .accelRangeSetting = ACCEL_2G,
+    .accelFChoiceBSetting = ACCEL_FCHOICE_B_DISABLED,
+    .accelDlpfSetting = ACCEL_DLPF_10p2Hz,
     .pwrMgmtSetting =
         INTERNAL_CLK<<CLKSEL|\
         0<<TEMP_DIS|\

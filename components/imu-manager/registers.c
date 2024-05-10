@@ -166,6 +166,25 @@ typedef enum
     ACCEL_16G,
 } AccelRangeConf_t;
 
+#define ACCEL_FCHOICE_B_OFFSET 3
+typedef enum 
+{
+   ACCEL_FCHOICE_B_DISABLED,
+   ACCEL_FCHOICE_B_ENABLED,
+} AccelFChoiceBConf_t;
+
+typedef enum
+{
+    ACCEL_DLPF_218p1Hz,
+    ACCEL_DLPF_218p11Hz,
+    ACCEL_DLPF_99Hz,
+    ACCEL_DLPF_44p8Hz,
+    ACCEL_DLPF_21p2Hz,
+    ACCEL_DLPF_10p2Hz,
+    ACCEL_DLPF_5p05Hz,
+    ACCEL_DLPF_420Hz,
+} AccelDlpfConf_t;
+
 typedef uint8_t FifoEn_t;
 typedef enum
 {

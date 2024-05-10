@@ -65,6 +65,7 @@ void imu_init(ImuConfig_t config)
     ESP_ERROR_CHECK(mpu9250_register_write_byte(INT_ENABLE, config.intPinEnable));
     ESP_ERROR_CHECK(mpu9250_register_write_byte(GYRO_CONFIG, (config.gyroRangeSetting<<GYRO_FS_SEL_OFFSET)|config.fChoiceBSetting));
     ESP_ERROR_CHECK(mpu9250_register_write_byte(ACCEL_CONFIG, config.accelRangeSetting<<ACCEL_FS_SEL_OFFSET));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(ACCEL_CONFIG_2, config.accelDlpfSetting|(config.accelFChoiceBSetting<<ACCEL_FCHOICE_B_OFFSET)));
     ESP_ERROR_CHECK(mpu9250_register_write_byte(PWR_MGMT_1, config.intPinEnable));
     ESP_LOGI(TAG, "IMU initialized successfully");
     conf = config;
@@ -183,8 +184,8 @@ ImuDataRaw_t imu_read(void)
     /**
      * Debug ESP_LOGI
     */
-    // ESP_LOGI(TAG, "x, y, z:  %.2f   %.2f   %.2f", convert_raw_accel_to_G(data.accelDataRaw.x), convert_raw_accel_to_G(data.accelDataRaw.y), convert_raw_accel_to_G(data.accelDataRaw.z));
-    ESP_LOGI(TAG, "x, y, z:  %.2f   %.2f   %.2f", convert_raw_gyro_to_radPerS(data.gyroDataRaw.x), convert_raw_gyro_to_radPerS(data.gyroDataRaw.y), convert_raw_gyro_to_radPerS(data.gyroDataRaw.z));
+    ESP_LOGI(TAG, "x, y, z:  %.2f   %.2f   %.2f", convert_raw_accel_to_G(data.accelDataRaw.x), convert_raw_accel_to_G(data.accelDataRaw.y), convert_raw_accel_to_G(data.accelDataRaw.z));
+    // ESP_LOGI(TAG, "x, y, z:  %.2f   %.2f   %.2f", convert_raw_gyro_to_radPerS(data.gyroDataRaw.x), convert_raw_gyro_to_radPerS(data.gyroDataRaw.y), convert_raw_gyro_to_radPerS(data.gyroDataRaw.z));
     /**
         * Debug ESP_LOGI
     */

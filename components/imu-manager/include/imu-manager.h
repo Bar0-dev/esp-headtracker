@@ -18,6 +18,8 @@ typedef struct
     GyroRangeConf_t gyroRangeSetting;
     FChoiceBConf_t fChoiceBSetting;
     AccelRangeConf_t accelRangeSetting;
+    AccelFChoiceBConf_t accelFChoiceBSetting;
+    AccelDlpfConf_t accelDlpfSetting;
     PwrMgmt_t pwrMgmtSetting;
 } ImuConfig_t;
 
