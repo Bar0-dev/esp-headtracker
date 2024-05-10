@@ -2,7 +2,6 @@
 #define IMU_H
 
 #include <stdio.h>
-#include <stdint.h>
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "../registers.c"

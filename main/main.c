@@ -41,7 +41,6 @@ ImuConfig_t conf = {
 void app_main(void)
 {
     imu_init(conf);
-    imu_who_am_i();
     while(1)
     {
         imu_read();

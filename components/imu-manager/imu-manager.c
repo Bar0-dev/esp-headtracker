@@ -57,6 +57,7 @@ static esp_err_t i2c_master_init(void)
 void imu_init(ImuConfig_t config)
 {
     ESP_ERROR_CHECK(i2c_master_init());
+    imu_who_am_i();
     ESP_ERROR_CHECK(mpu9250_register_write_byte(SMPLRT_DIV, config.sampleDivSetting));
     ESP_ERROR_CHECK(mpu9250_register_write_byte(CONFIG, (config.fifoMode<<FIFO_MODE_OFFSET)|(config.fSyncSetting<<FSYNC_OFFSET)|config.dlpfSetting));
     ESP_ERROR_CHECK(mpu9250_register_write_byte(FIFO_EN, config.fifoEnSetting));
@@ -161,7 +162,8 @@ ImuDataRaw_t imu_read(void)
      * Debug ESP_LOGI
     */
     ESP_LOGI(TAG, "x, y, z:  %d   %d   %d", data.accelDataRaw.x, data.accelDataRaw.y, data.accelDataRaw.z);
-    // ESP_LOGI(TAG, "Temp read: %hd", data.tempDataRaw);
+    ESP_LOGI(TAG, "Temp read: %hd", data.tempDataRaw);
+    ESP_LOGI(TAG, "x, y, z:  %d   %d   %d", data.gyroDataRaw.x, data.gyroDataRaw.y, data.gyroDataRaw.z);
     /**
         * Debug ESP_LOGI
     */
