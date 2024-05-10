@@ -109,15 +109,13 @@ uint8_t imu_who_am_i()
 //     return data;
 // }
 
-static float map_int16_to_range(int16_t value, uint8_t range){
-    
-    return (float)value;
+static float map_int16_to_range(int16_t value, int16_t range){
+    return ((float)value-INT16_MIN)*2*range/(INT16_MAX-INT16_MIN)-range;
 }
 
-static float convert_raw_accel_to_G(uint16_t twosComplement){
-    AccelConf_t range = conf.accelRangeSetting;
+static float convert_raw_accel_to_G(int16_t raw){
+    AccelRangeConf_t range = conf.accelRangeSetting;
     float calc = 0;
-    int16_t raw = (int16_t)twosComplement;
 
     switch (range)
     {
@@ -136,7 +134,31 @@ static float convert_raw_accel_to_G(uint16_t twosComplement){
     default:
         break;
     }
-    return raw;
+    return calc;
+}
+
+static float convert_raw_gyro_to_radPerS(int16_t raw){
+    GyroRangeConf_t range = conf.gyroRangeSetting;
+    float calc = 0;
+
+    switch (range)
+    {
+    case GYRO_250DPS:
+        calc = map_int16_to_range(raw, 250);
+        break;
+    case GYRO_500DPS:
+        calc = map_int16_to_range(raw, 500);
+        break;
+    case GYRO_1000DPS:
+        calc = map_int16_to_range(raw, 1000);
+        break;
+    case GYRO_2000DPS:
+        calc = map_int16_to_range(raw, 2000);
+        break;
+    default:
+        break;
+    }
+    return calc;
 }
 
 ImuDataRaw_t imu_read(void)
@@ -161,9 +183,8 @@ ImuDataRaw_t imu_read(void)
     /**
      * Debug ESP_LOGI
     */
-    ESP_LOGI(TAG, "x, y, z:  %d   %d   %d", data.accelDataRaw.x, data.accelDataRaw.y, data.accelDataRaw.z);
-    ESP_LOGI(TAG, "Temp read: %hd", data.tempDataRaw);
-    ESP_LOGI(TAG, "x, y, z:  %d   %d   %d", data.gyroDataRaw.x, data.gyroDataRaw.y, data.gyroDataRaw.z);
+    // ESP_LOGI(TAG, "x, y, z:  %.2f   %.2f   %.2f", convert_raw_accel_to_G(data.accelDataRaw.x), convert_raw_accel_to_G(data.accelDataRaw.y), convert_raw_accel_to_G(data.accelDataRaw.z));
+    ESP_LOGI(TAG, "x, y, z:  %.2f   %.2f   %.2f", convert_raw_gyro_to_radPerS(data.gyroDataRaw.x), convert_raw_gyro_to_radPerS(data.gyroDataRaw.y), convert_raw_gyro_to_radPerS(data.gyroDataRaw.z));
     /**
         * Debug ESP_LOGI
     */

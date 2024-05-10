@@ -144,7 +144,7 @@ typedef enum
     GYRO_500DPS,
     GYRO_1000DPS,
     GYRO_2000DPS,
-} GyroFsSelConf_t;
+} GyroRangeConf_t;
 
 typedef enum
 {
@@ -164,7 +164,7 @@ typedef enum
     ACCEL_4G,
     ACCEL_8G,
     ACCEL_16G,
-} AccelConf_t;
+} AccelRangeConf_t;
 
 typedef uint8_t FifoEn_t;
 typedef enum

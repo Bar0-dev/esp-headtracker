@@ -15,9 +15,9 @@ typedef struct
     FifoEn_t fifoEnSetting;
     IntPinCfg_t intPinCfg;
     IntPinEnable_t intPinEnable;
-    GyroFsSelConf_t gyroRangeSetting;
+    GyroRangeConf_t gyroRangeSetting;
     FChoiceBConf_t fChoiceBSetting;
-    AccelConf_t accelRangeSetting;
+    AccelRangeConf_t accelRangeSetting;
     PwrMgmt_t pwrMgmtSetting;
 } ImuConfig_t;
 
