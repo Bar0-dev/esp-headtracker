@@ -57,18 +57,17 @@ static esp_err_t i2c_master_init(void)
 void imu_init(ImuConfig_t config)
 {
     ESP_ERROR_CHECK(i2c_master_init());
-    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_SAMPLE_RATE_DIV_ADDR, config.sampleDivSetting));
-    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_FSYNC_DLPF_CONFIG_ADDR, (config.fSyncSetting<<MPU9250_FSYNC_OFFSET)|config.dlpfSetting));
-    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_FIFO_EN_ADDR, config.fifoEnSetting));
-    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_INT_PIN_CFG_ADDR, config.intPinCfg));
-    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_INT_ENABLE_ADDR, config.intPinEnable));
-    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_GYRO_CONFIG_ADDR, config.gyroRangeSetting<<MPU9250_GYRO_FS_SEL_OFFSET));
-    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_ACCEL_CONFIG_ADDR, config.accelRangeSetting<<MPU9250_ACCEL_FS_SEL_OFFSET));
-    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_PWR_MGMT_1_ADDR, config.intPinEnable));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(SMPLRT_DIV, config.sampleDivSetting));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(CONFIG, (config.fifoMode<<FIFO_MODE_OFFSET)|(config.fSyncSetting<<FSYNC_OFFSET)|config.dlpfSetting));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(FIFO_EN, config.fifoEnSetting));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(INT_PIN_CFG, config.intPinCfg));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(INT_ENABLE, config.intPinEnable));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(GYRO_CONFIG, (config.gyroRangeSetting<<GYRO_FS_SEL_OFFSET)|config.fChoiceBSetting));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(ACCEL_CONFIG, config.accelRangeSetting<<ACCEL_FS_SEL_OFFSET));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(PWR_MGMT_1, config.intPinEnable));
     ESP_LOGI(TAG, "IMU initialized successfully");
     conf = config;
 }
-
 void imu_deinit(void)
 {
     ESP_ERROR_CHECK(i2c_driver_delete(I2C_MASTER_NUM));
@@ -77,13 +76,13 @@ void imu_deinit(void)
 
 void imu_reset(void)
 {
-    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_PWR_MGMT_1_ADDR, 1 << DEVICE_RESET));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(PWR_MGMT_1, 1 << DEVICE_RESET));
 }
 
 uint8_t imu_who_am_i()
 {
     uint8_t data;
-    ESP_ERROR_CHECK(mpu9250_register_read(MPU9250_WHO_AM_I_REG_ADDR, &data, 1));
+    ESP_ERROR_CHECK(mpu9250_register_read(WHO_AM_I, &data, 1));
     ESP_LOGI(TAG, "IMU who am I response: %X", data);
     return data;
 }
@@ -92,10 +91,10 @@ uint8_t imu_who_am_i()
 // {
 //     AccelDataRaw_t data;
 //     uint8_t buffer[6];
-//     ESP_ERROR_CHECK(mpu9250_register_read(MPU9250_ACCEL_DATA_ADDR, buffer, 6));
-//     data.x = (uint16_t)(buffer[ACCEL_X_OUT_H]<<8) + buffer[ACCEL_X_OUT_L];
-//     data.y = (uint16_t)(buffer[ACCEL_Y_OUT_H]<<8) + buffer[ACCEL_Y_OUT_L];
-//     data.z = (uint16_t)(buffer[ACCEL_Z_OUT_H]<<8) + buffer[ACCEL_Z_OUT_L];
+//     ESP_ERROR_CHECK(mpu9250_register_read(ACCEL_DATA_ADDR, buffer, 6));
+//     data.x = (uint16_t)(buffer[ACCEL_XOUT_H]<<8) + buffer[ACCEL_XOUT_L];
+//     data.y = (uint16_t)(buffer[ACCEL_YOUT_H]<<8) + buffer[ACCEL_YOUT_L];
+//     data.z = (uint16_t)(buffer[ACCEL_ZOUT_H]<<8) + buffer[ACCEL_ZOUT_L];
 
 //     /**
 //      * Debug ESP_LOGI
@@ -145,18 +144,18 @@ ImuDataRaw_t imu_read(void)
     uint8_t interruptSignal = 0;
     while (interruptSignal == 0)
     {
-        ESP_ERROR_CHECK(mpu9250_register_read(MPU9250_INT_STATUS_ADDR, &interruptSignal, 1));
+        ESP_ERROR_CHECK(mpu9250_register_read(INT_STATUS, &interruptSignal, 1));
         // ESP_LOGI(TAG, "Interrupt signal: %u", interruptSignal);
     }
-    ESP_ERROR_CHECK(mpu9250_register_read(MPU9250_ACCEL_DATA_ADDR, buffer, 14));
+    ESP_ERROR_CHECK(mpu9250_register_read(ACCEL_XOUT_H, buffer, 14));
     ImuDataRaw_t data = {
-        .accelDataRaw.x = ((int16_t)buffer[ACCEL_X_OUT_H] << 8) | buffer[ACCEL_X_OUT_L],
-        .accelDataRaw.y = ((int16_t)buffer[ACCEL_Y_OUT_H] << 8) | buffer[ACCEL_Y_OUT_L],
-        .accelDataRaw.z = ((int16_t)buffer[ACCEL_Z_OUT_H] << 8) | buffer[ACCEL_Z_OUT_L],
-        .tempDataRaw = ((int16_t)buffer[TEMP_OUT_H]<<8) | buffer[TEMP_OUT_L],
-        .gyroDataRaw.x = ((int16_t)buffer[GYRO_X_OUT_H]<<8) | buffer[GYRO_X_OUT_L],
-        .gyroDataRaw.y = ((int16_t)buffer[GYRO_Y_OUT_H]<<8) | buffer[GYRO_Y_OUT_L],
-        .gyroDataRaw.z = ((int16_t)buffer[GYRO_Z_OUT_H]<<8) | buffer[GYRO_Z_OUT_L],
+        .accelDataRaw.x = ((int16_t)buffer[ACCEL_XOUT_H_OFFSET] << 8) | buffer[ACCEL_XOUT_L_OFFSET],
+        .accelDataRaw.y = ((int16_t)buffer[ACCEL_YOUT_H_OFFSET] << 8) | buffer[ACCEL_YOUT_L_OFFSET],
+        .accelDataRaw.z = ((int16_t)buffer[ACCEL_ZOUT_H_OFFSET] << 8) | buffer[ACCEL_ZOUT_L_OFFSET],
+        .tempDataRaw = ((int16_t)buffer[TEMP_OUT_H_OFFSET] << 8) | buffer[TEMP_OUT_L_OFFSET],
+        .gyroDataRaw.x = ((int16_t)buffer[GYRO_XOUT_H_OFFSET] << 8) | buffer[GYRO_XOUT_L_OFFSET],
+        .gyroDataRaw.y = ((int16_t)buffer[GYRO_YOUT_H_OFFSET] << 8) | buffer[GYRO_YOUT_L_OFFSET],
+        .gyroDataRaw.z = ((int16_t)buffer[GYRO_ZOUT_H_OFFSET] << 8) | buffer[GYRO_ZOUT_L_OFFSET],
     };
     /**
      * Debug ESP_LOGI

@@ -2,6 +2,7 @@
 #define IMU_H
 
 #include <stdio.h>
+#include <stdint.h>
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "../registers.c"
@@ -11,10 +12,12 @@ typedef struct
     SampleDiv_t sampleDivSetting;
     FSyncConf_t fSyncSetting;
     DlpfConf_t dlpfSetting;
+    FifoModeConf_t fifoMode;
     FifoEn_t fifoEnSetting;
     IntPinCfg_t intPinCfg;
     IntPinEnable_t intPinEnable;
-    GyroConf_t gyroRangeSetting;
+    GyroFsSelConf_t gyroRangeSetting;
+    FChoiceBConf_t fChoiceBSetting;
     AccelConf_t accelRangeSetting;
     PwrMgmt_t pwrMgmtSetting;
 } ImuConfig_t;

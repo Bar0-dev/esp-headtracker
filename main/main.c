@@ -4,7 +4,8 @@
 ImuConfig_t conf = {
     .sampleDivSetting = 0,
     .fSyncSetting = FSYNC_DISABLED,
-    .dlpfSetting = DLPF_5Hz,
+    .dlpfSetting = DLPF_10Hz,
+    .fifoMode = ALLOW_OVERFLOW,
     .fifoEnSetting =
         0<<SLV0_FIFO_EN|\
         0<<SLV1_FIFO_EN|\
@@ -27,6 +28,7 @@ ImuConfig_t conf = {
         0<<I2C_MST_INT_EN|\
         0<<FIFO_OFLOW_EN,
     .gyroRangeSetting = GYRO_500DPS,
+    .fChoiceBSetting = FCHOICE_B_DISABLED,
     .accelRangeSetting = ACCEL_2G,
     .pwrMgmtSetting =
         INTERNAL_CLK<<CLKSEL|\
