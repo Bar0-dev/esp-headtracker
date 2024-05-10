@@ -13,22 +13,22 @@ static const char *TAG = "imu-manager";
 static ImuConfig_t conf;
 
 /**
- * @brief Read a sequence of bytes from a MPU6050 sensor registers
+ * @brief Read a sequence of bytes from a MPU9250 sensor registers
  */
-static esp_err_t mpu6050_register_read(uint8_t reg_addr, uint8_t *data, size_t len)
+static esp_err_t mpu9250_register_read(uint8_t reg_addr, uint8_t *data, size_t len)
 {
-    return i2c_master_write_read_device(I2C_MASTER_NUM, MPU6050_SENSOR_ADDR, &reg_addr, 1, data, len, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+    return i2c_master_write_read_device(I2C_MASTER_NUM, MPU9250_SENSOR_ADDR, &reg_addr, 1, data, len, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 }
 
 /**
- * @brief Write a byte to a MPU6050 sensor register
+ * @brief Write a byte to a MPU9250 sensor register
  */
-static esp_err_t mpu6050_register_write_byte(uint8_t reg_addr, uint8_t data)
+static esp_err_t mpu9250_register_write_byte(uint8_t reg_addr, uint8_t data)
 {
     esp_err_t ret;
     uint8_t write_buf[2] = {reg_addr, data};
 
-    ret = i2c_master_write_to_device(I2C_MASTER_NUM, MPU6050_SENSOR_ADDR, write_buf, sizeof(write_buf), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+    ret = i2c_master_write_to_device(I2C_MASTER_NUM, MPU9250_SENSOR_ADDR, write_buf, sizeof(write_buf), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 
     return ret;
 }
@@ -57,14 +57,14 @@ static esp_err_t i2c_master_init(void)
 void imu_init(ImuConfig_t config)
 {
     ESP_ERROR_CHECK(i2c_master_init());
-    ESP_ERROR_CHECK(mpu6050_register_write_byte(MPU6050_SAMPLE_RATE_DIV_ADDR, config.sampleDivSetting));
-    ESP_ERROR_CHECK(mpu6050_register_write_byte(MPU6050_FSYNC_DLPF_CONFIG_ADDR, (config.fSyncSetting<<MPU6050_FSYNC_OFFSET)|config.dlpfSetting));
-    ESP_ERROR_CHECK(mpu6050_register_write_byte(MPU6050_FIFO_EN_ADDR, config.fifoEnSetting));
-    ESP_ERROR_CHECK(mpu6050_register_write_byte(MPU6050_INT_PIN_CFG_ADDR, config.intPinCfg));
-    ESP_ERROR_CHECK(mpu6050_register_write_byte(MPU6050_INT_ENABLE_ADDR, config.intPinEnable));
-    ESP_ERROR_CHECK(mpu6050_register_write_byte(MPU6050_GYRO_CONFIG_ADDR, config.gyroRangeSetting<<MPU6050_GYRO_FS_SEL_OFFSET));
-    ESP_ERROR_CHECK(mpu6050_register_write_byte(MPU6050_ACCEL_CONFIG_ADDR, config.accelRangeSetting<<MPU6050_ACCEL_FS_SEL_OFFSET));
-    ESP_ERROR_CHECK(mpu6050_register_write_byte(MPU6050_PWR_MGMT_1_ADDR, config.intPinEnable));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_SAMPLE_RATE_DIV_ADDR, config.sampleDivSetting));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_FSYNC_DLPF_CONFIG_ADDR, (config.fSyncSetting<<MPU9250_FSYNC_OFFSET)|config.dlpfSetting));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_FIFO_EN_ADDR, config.fifoEnSetting));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_INT_PIN_CFG_ADDR, config.intPinCfg));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_INT_ENABLE_ADDR, config.intPinEnable));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_GYRO_CONFIG_ADDR, config.gyroRangeSetting<<MPU9250_GYRO_FS_SEL_OFFSET));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_ACCEL_CONFIG_ADDR, config.accelRangeSetting<<MPU9250_ACCEL_FS_SEL_OFFSET));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_PWR_MGMT_1_ADDR, config.intPinEnable));
     ESP_LOGI(TAG, "IMU initialized successfully");
     conf = config;
 }
@@ -77,13 +77,13 @@ void imu_deinit(void)
 
 void imu_reset(void)
 {
-    ESP_ERROR_CHECK(mpu6050_register_write_byte(MPU6050_PWR_MGMT_1_ADDR, 1 << DEVICE_RESET));
+    ESP_ERROR_CHECK(mpu9250_register_write_byte(MPU9250_PWR_MGMT_1_ADDR, 1 << DEVICE_RESET));
 }
 
 uint8_t imu_who_am_i()
 {
     uint8_t data;
-    ESP_ERROR_CHECK(mpu6050_register_read(MPU6050_WHO_AM_I_REG_ADDR, &data, 1));
+    ESP_ERROR_CHECK(mpu9250_register_read(MPU9250_WHO_AM_I_REG_ADDR, &data, 1));
     ESP_LOGI(TAG, "IMU who am I response: %X", data);
     return data;
 }
@@ -92,7 +92,7 @@ uint8_t imu_who_am_i()
 // {
 //     AccelDataRaw_t data;
 //     uint8_t buffer[6];
-//     ESP_ERROR_CHECK(mpu6050_register_read(MPU6050_ACCEL_DATA_ADDR, buffer, 6));
+//     ESP_ERROR_CHECK(mpu9250_register_read(MPU9250_ACCEL_DATA_ADDR, buffer, 6));
 //     data.x = (uint16_t)(buffer[ACCEL_X_OUT_H]<<8) + buffer[ACCEL_X_OUT_L];
 //     data.y = (uint16_t)(buffer[ACCEL_Y_OUT_H]<<8) + buffer[ACCEL_Y_OUT_L];
 //     data.z = (uint16_t)(buffer[ACCEL_Z_OUT_H]<<8) + buffer[ACCEL_Z_OUT_L];
@@ -145,10 +145,10 @@ ImuDataRaw_t imu_read(void)
     uint8_t interruptSignal = 0;
     while (interruptSignal == 0)
     {
-        ESP_ERROR_CHECK(mpu6050_register_read(MPU6050_INT_STATUS_ADDR, &interruptSignal, 1));
+        ESP_ERROR_CHECK(mpu9250_register_read(MPU9250_INT_STATUS_ADDR, &interruptSignal, 1));
         // ESP_LOGI(TAG, "Interrupt signal: %u", interruptSignal);
     }
-    ESP_ERROR_CHECK(mpu6050_register_read(MPU6050_ACCEL_DATA_ADDR, buffer, 14));
+    ESP_ERROR_CHECK(mpu9250_register_read(MPU9250_ACCEL_DATA_ADDR, buffer, 14));
     ImuDataRaw_t data = {
         .accelDataRaw.x = ((int16_t)buffer[ACCEL_X_OUT_H] << 8) | buffer[ACCEL_X_OUT_L],
         .accelDataRaw.y = ((int16_t)buffer[ACCEL_Y_OUT_H] << 8) | buffer[ACCEL_Y_OUT_L],

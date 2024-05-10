@@ -1,12 +1,12 @@
 
-#define MPU6050_SENSOR_ADDR                 0x68        /*!< Slave address of the MPU6050 sensor */
-#define MPU6050_WHO_AM_I_REG_ADDR           0x75        /*!< Register addresses of the "who am I" register */
+#define MPU9250_SENSOR_ADDR                 0x68        /*!< Slave address of the MPU9250 sensor */
+#define MPU9250_WHO_AM_I_REG_ADDR           0x75        /*!< Register addresses of the "who am I" register */
 
-#define MPU6050_SAMPLE_RATE_DIV_ADDR        0x19
+#define MPU9250_SAMPLE_RATE_DIV_ADDR        0x19
 typedef uint8_t SampleDiv_t;
 
-#define MPU6050_FSYNC_DLPF_CONFIG_ADDR      0x1A
-#define MPU6050_FSYNC_OFFSET                3
+#define MPU9250_FSYNC_DLPF_CONFIG_ADDR      0x1A
+#define MPU9250_FSYNC_OFFSET                3
 typedef enum
 {
     FSYNC_DISABLED,
@@ -33,8 +33,8 @@ typedef enum
  * @todo add slef test offset and enums for GYRO_CONFIG
 */
 
-#define MPU6050_GYRO_CONFIG_ADDR       0x1B
-#define MPU6050_GYRO_FS_SEL_OFFSET     3
+#define MPU9250_GYRO_CONFIG_ADDR       0x1B
+#define MPU9250_GYRO_FS_SEL_OFFSET     3
 typedef enum
 {
     GYRO_250DPS,
@@ -47,8 +47,8 @@ typedef enum
  * @todo add slef test offset and enums for ACCEL_CONFIG
 */
 
-#define MPU6050_ACCEL_CONFIG_ADDR       0x1C
-#define MPU6050_ACCEL_FS_SEL_OFFSET     3
+#define MPU9250_ACCEL_CONFIG_ADDR       0x1C
+#define MPU9250_ACCEL_FS_SEL_OFFSET     3
 typedef enum
 {
     ACCEL_2G,
@@ -57,7 +57,7 @@ typedef enum
     ACCEL_16G,
 } AccelConf_t;
 
-#define MPU6050_FIFO_EN_ADDR         0x23
+#define MPU9250_FIFO_EN_ADDR         0x23
 typedef uint8_t FifoEn_t;
 typedef enum
 {
@@ -71,7 +71,7 @@ XG_FIFO_EN,
 TEMP_FIFO_EN,
 } FifoEnOffsets_t;
 
-#define MPU6050_INT_PIN_CFG_ADDR         0x37
+#define MPU9250_INT_PIN_CFG_ADDR         0x37
 typedef uint8_t IntPinCfg_t;
 typedef enum
 {
@@ -84,7 +84,7 @@ typedef enum
     INT_LEVEL,
 } IntPinCfgOffsets_t;
 
-#define MPU6050_INT_ENABLE_ADDR         0x38
+#define MPU9250_INT_ENABLE_ADDR         0x38
 typedef uint8_t IntPinEnable_t;
 typedef enum
 {
@@ -94,7 +94,7 @@ FIFO_OFLOW_EN,
 } IntEnable_t;
 
 
-#define MPU6050_INT_STATUS_ADDR         0x3A
+#define MPU9250_INT_STATUS_ADDR         0x3A
 typedef enum
 {
     DATA_RDY_INT,
@@ -102,11 +102,11 @@ typedef enum
     FIFO_OFLOW_INT = 4,
 } InterruptStatus_t;
 
-#define MPU6050_ACCEL_DATA_ADDR         0x3B
+#define MPU9250_ACCEL_DATA_ADDR         0x3B
 
-#define MPU6050_TEMP_DATA_ADDR         0x41
+#define MPU9250_TEMP_DATA_ADDR         0x41
 
-#define MPU6050_GYRO_DATA_ADDR         0x43
+#define MPU9250_GYRO_DATA_ADDR         0x43
 typedef enum
 {
     ACCEL_X_OUT_H,
@@ -125,7 +125,7 @@ typedef enum
     GYRO_Z_OUT_L,
 } DataOffsets_t;
 
-#define MPU6050_PWR_MGMT_1_ADDR         0x6B
+#define MPU9250_PWR_MGMT_1_ADDR         0x6B
 typedef uint8_t PwrMgmt_t;
 typedef enum
 {
@@ -146,6 +146,6 @@ typedef enum
     RESET_CLK = 7,
 } ClkSrc_t;
 
-#define MPU6050_FIFO_COUNT          0x72
+#define MPU9250_FIFO_COUNT          0x72
 
-#define MPU6050_FIFO_R_W            0x74
+#define MPU9250_FIFO_R_W            0x74
