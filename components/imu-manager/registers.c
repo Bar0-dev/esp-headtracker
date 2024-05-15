@@ -202,12 +202,12 @@ typedef uint8_t IntPinCfg_t;
 typedef enum
 {
     I2C_BYPASS_EN = 1,
-    FSYNC_INT_EN,
-    FSYNC_INT_LEVEL,
-    INT_RD_CLEAR,
+    FSYNC_INT_MODE_EN,
+    ACTL_FSYNC,
+    INT_ANYRD_2CLEAR,
     LATCH_INT_EN,
     INT_OPEN,
-    INT_LEVEL,
+    ACTL,
 } IntPinCfgOffsets_t;
 
 typedef uint8_t IntPinEnable_t;
@@ -263,3 +263,8 @@ typedef enum
     GYRO_ZOUT_H_OFFSET,
     GYRO_ZOUT_L_OFFSET,
 } DataOffsets_t;
+
+//Magnetometer registers
+#define AK8362_SENSOR_ADDR 0x0C         /*!< Slave address of the AK8362 sensor */
+#define AK8362_WHO_AM_I 0x00
+#define AK8362_MAG_DATA 0x03

@@ -16,13 +16,13 @@ ImuConfig_t conf = {
         0<<XG_FIFO_EN|\
         0<<TEMP_FIFO_EN,
     .intPinCfg =
-        0<<INT_LEVEL|\
-        0<<INT_OPEN|\
+        1<<I2C_BYPASS_EN|\
+        0<<FSYNC_INT_MODE_EN|\
+        0<<ACTL_FSYNC|\
+        0<<INT_ANYRD_2CLEAR|\
         0<<LATCH_INT_EN|\
-        0<<INT_RD_CLEAR|\
-        0<<FSYNC_INT_LEVEL|\
-        0<<FSYNC_INT_EN|\
-        0<<I2C_BYPASS_EN,
+        0<<INT_OPEN|\
+        0<<ACTL,
     .intPinEnable =
         1<<DATA_RDY_EN|\
         0<<I2C_MST_INT_EN|\
@@ -43,6 +43,7 @@ ImuConfig_t conf = {
 void app_main(void)
 {
     imu_init(conf);
+    imu_who_am_i(AK8362_SENSOR_ADDR);
     while(1)
     {
         imu_read();

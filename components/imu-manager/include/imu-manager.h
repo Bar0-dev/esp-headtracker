@@ -55,7 +55,7 @@ typedef struct
 void imu_init(ImuConfig_t config);
 void imu_deinit(void);
 void imu_reset(void);
-uint8_t imu_who_am_i(void);
+uint8_t imu_who_am_i(uint8_t device_addr);
 ImuDataRaw_t imu_read(void);
 
 #endif
