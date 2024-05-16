@@ -268,3 +268,37 @@ typedef enum
 #define AK8362_SENSOR_ADDR 0x0C         /*!< Slave address of the AK8362 sensor */
 #define AK8362_WHO_AM_I 0x00
 #define AK8362_MAG_DATA 0x03
+#define AK8362_CONTROL_1 0x0A
+#define AK8362_STATUS_1 0x02
+#define AK8362_STATUS_2 0x09
+
+typedef enum
+{
+    MAG_XOUT_L_OFFSET,
+    MAG_XOUT_H_OFFSET,
+    MAG_YOUT_L_OFFSET,
+    MAG_YOUT_H_OFFSET,
+    MAG_ZOUT_L_OFFSET,
+    MAG_ZOUT_H_OFFSET,
+} MagDataOffsets_t;
+
+typedef uint8_t MagControlConf_t;
+
+typedef enum
+{
+    MAG_OUTPUT_MODE,
+    MAG_OUTPUT_WIDTH = 4,
+} MagControlOffsets_t;
+
+typedef enum
+{
+    POWER_DOWN_MODE,
+    SINGLE_MEASUREMENT_MODE,
+    COUNTINIOUS_MODE_1,
+    COUNTINIOUS_MODE_2,
+    EXTERNAL_TRIGGER_MODE,
+    SELF_TEST_MODE,
+    FUSE_ROM_MODE,
+} MagOperationMode_t;
+
+#define AK8362_MAX_RANGE 4912

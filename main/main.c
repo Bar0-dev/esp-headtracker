@@ -38,6 +38,7 @@ ImuConfig_t conf = {
         0<<CYCLE|\
         0<<SLEEP|\
         0<<DEVICE_RESET,
+    .magControlSetting = COUNTINIOUS_MODE_2<<MAG_OUTPUT_MODE,
 };
 
 void app_main(void)
@@ -46,7 +47,7 @@ void app_main(void)
     imu_who_am_i(AK8362_SENSOR_ADDR);
     while(1)
     {
-        imu_read();
+        imu_read_raw();
     }
     imu_deinit();
 }

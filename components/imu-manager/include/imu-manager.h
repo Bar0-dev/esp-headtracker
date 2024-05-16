@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "esp_log.h"
 #include "driver/i2c.h"
-#include "../registers.c"
+#include "../registers.h"
 
 typedef struct
 {
@@ -21,6 +21,7 @@ typedef struct
     AccelFChoiceBConf_t accelFChoiceBSetting;
     AccelDlpfConf_t accelDlpfSetting;
     PwrMgmt_t pwrMgmtSetting;
+    MagControlConf_t magControlSetting;
 } ImuConfig_t;
 
 typedef struct 
@@ -28,34 +29,36 @@ typedef struct
     int16_t x;
     int16_t y;
     int16_t z;
-} AccelDataRaw_t;
+} RawVector_t;
 
 typedef struct 
 {
-    int16_t x;
-    int16_t y;
-    int16_t z;
-} GyroDataRaw_t;
+    float x;
+    float y;
+    float z;
+} Vector_t;
 
 typedef int16_t TempDataRaw_t;
 
 typedef struct
 {
-    AccelDataRaw_t accelDataRaw;
-    TempDataRaw_t tempDataRaw;
-    GyroDataRaw_t gyroDataRaw;
-} ImuDataRaw_t;
+    RawVector_t accel;
+    RawVector_t gyro;
+    RawVector_t mag;
+} ImuData_t;
 
-typedef struct
+typedef enum
 {
-
-} GForce_t;
-
+    ACCEL,
+    GYRO,
+    TEMP,
+    MAG
+} SensorType_t;
 
 void imu_init(ImuConfig_t config);
 void imu_deinit(void);
 void imu_reset(void);
 uint8_t imu_who_am_i(uint8_t device_addr);
-ImuDataRaw_t imu_read(void);
+ImuData_t imu_read_raw(void);
 
 #endif

@@ -67,6 +67,7 @@ void imu_init(ImuConfig_t config)
     ESP_ERROR_CHECK(imu_register_write_byte(MPU9250_SENSOR_ADDR, ACCEL_CONFIG, config.accelRangeSetting<<ACCEL_FS_SEL_OFFSET));
     ESP_ERROR_CHECK(imu_register_write_byte(MPU9250_SENSOR_ADDR, ACCEL_CONFIG_2, config.accelDlpfSetting|(config.accelFChoiceBSetting<<ACCEL_FCHOICE_B_OFFSET)));
     ESP_ERROR_CHECK(imu_register_write_byte(MPU9250_SENSOR_ADDR, PWR_MGMT_1, config.intPinEnable));
+    ESP_ERROR_CHECK(imu_register_write_byte(AK8362_SENSOR_ADDR, AK8362_CONTROL_1, config.magControlSetting));
     ESP_LOGI(TAG, "IMU initialized successfully");
     conf = config;
 }
@@ -116,11 +117,14 @@ uint8_t imu_who_am_i(uint8_t device_addr)
 //     return data;
 // }
 
-static float map_int16_to_range(int16_t value, int16_t range){
+
+static float map_int16_to_range(int16_t value, int16_t range)
+{
     return ((float)value-INT16_MIN)*2*range/(INT16_MAX-INT16_MIN)-range;
 }
 
-static float convert_raw_accel_to_G(int16_t raw){
+static float convert_raw_accel_to_G(int16_t raw)
+{
     AccelRangeConf_t range = conf.accelRangeSetting;
     float calc = 0;
 
@@ -144,7 +148,8 @@ static float convert_raw_accel_to_G(int16_t raw){
     return calc;
 }
 
-static float convert_raw_gyro_to_radPerS(int16_t raw){
+static float convert_raw_gyro_to_radPerS(int16_t raw)
+{
     GyroRangeConf_t range = conf.gyroRangeSetting;
     float calc = 0;
 
@@ -168,7 +173,48 @@ static float convert_raw_gyro_to_radPerS(int16_t raw){
     return calc;
 }
 
-ImuDataRaw_t imu_read(void)
+static void mag_read(ImuData_t * data_raw)
+{
+    uint8_t buffer[6];
+    uint8_t overflow = 0;
+    ESP_ERROR_CHECK(imu_register_read(AK8362_SENSOR_ADDR, AK8362_STATUS_1, &overflow, 1));
+    ESP_ERROR_CHECK(imu_register_read(AK8362_SENSOR_ADDR, AK8362_MAG_DATA, buffer, 6));
+    data_raw->mag.x = ((int16_t)buffer[MAG_XOUT_H_OFFSET] << 8) | buffer[MAG_XOUT_L_OFFSET];
+    data_raw->mag.y = ((int16_t)buffer[MAG_YOUT_H_OFFSET] << 8) | buffer[MAG_YOUT_L_OFFSET];
+    data_raw->mag.z = ((int16_t)buffer[MAG_ZOUT_H_OFFSET] << 8) | buffer[MAG_ZOUT_L_OFFSET];
+    ESP_ERROR_CHECK(imu_register_read(AK8362_SENSOR_ADDR, AK8362_STATUS_2, &overflow, 1));
+}
+
+static void log_data(ImuData_t * data, SensorType_t sensor_type)
+{
+    Vector_t data_to_show;
+    switch (sensor_type)
+    {
+    case ACCEL:
+        data_to_show.x = convert_raw_accel_to_G(data->accel.x);
+        data_to_show.y = convert_raw_accel_to_G(data->accel.y);
+        data_to_show.z = convert_raw_accel_to_G(data->accel.z);
+        break;
+
+    case GYRO:
+        data_to_show.x = convert_raw_gyro_to_radPerS(data->gyro.x);
+        data_to_show.y = convert_raw_gyro_to_radPerS(data->gyro.y);
+        data_to_show.z = convert_raw_gyro_to_radPerS(data->gyro.z);
+        break;
+
+    case MAG:
+        data_to_show.x = map_int16_to_range(data->mag.x, AK8362_MAX_RANGE);
+        data_to_show.y = map_int16_to_range(data->mag.y, AK8362_MAX_RANGE);
+        data_to_show.z = map_int16_to_range(data->mag.z, AK8362_MAX_RANGE);
+        break;
+
+    default:
+        break;
+    }
+    ESP_LOGI(TAG, "x, y, z:  %.2f   %.2f   %.2f", data_to_show.x,  data_to_show.y,  data_to_show.z);
+}
+
+ImuData_t imu_read_raw(void)
 {
     uint8_t buffer[14];
     uint8_t interruptSignal = 0;
@@ -178,22 +224,15 @@ ImuDataRaw_t imu_read(void)
         // ESP_LOGI(TAG, "Interrupt signal: %u", interruptSignal);
     }
     ESP_ERROR_CHECK(imu_register_read(MPU9250_SENSOR_ADDR, ACCEL_XOUT_H, buffer, 14));
-    ImuDataRaw_t data = {
-        .accelDataRaw.x = ((int16_t)buffer[ACCEL_XOUT_H_OFFSET] << 8) | buffer[ACCEL_XOUT_L_OFFSET],
-        .accelDataRaw.y = ((int16_t)buffer[ACCEL_YOUT_H_OFFSET] << 8) | buffer[ACCEL_YOUT_L_OFFSET],
-        .accelDataRaw.z = ((int16_t)buffer[ACCEL_ZOUT_H_OFFSET] << 8) | buffer[ACCEL_ZOUT_L_OFFSET],
-        .tempDataRaw = ((int16_t)buffer[TEMP_OUT_H_OFFSET] << 8) | buffer[TEMP_OUT_L_OFFSET],
-        .gyroDataRaw.x = ((int16_t)buffer[GYRO_XOUT_H_OFFSET] << 8) | buffer[GYRO_XOUT_L_OFFSET],
-        .gyroDataRaw.y = ((int16_t)buffer[GYRO_YOUT_H_OFFSET] << 8) | buffer[GYRO_YOUT_L_OFFSET],
-        .gyroDataRaw.z = ((int16_t)buffer[GYRO_ZOUT_H_OFFSET] << 8) | buffer[GYRO_ZOUT_L_OFFSET],
+    ImuData_t data_raw = {
+        .accel.x = ((int16_t)buffer[ACCEL_XOUT_H_OFFSET] << 8) | buffer[ACCEL_XOUT_L_OFFSET],
+        .accel.y = ((int16_t)buffer[ACCEL_YOUT_H_OFFSET] << 8) | buffer[ACCEL_YOUT_L_OFFSET],
+        .accel.z = ((int16_t)buffer[ACCEL_ZOUT_H_OFFSET] << 8) | buffer[ACCEL_ZOUT_L_OFFSET],
+        .gyro.x = ((int16_t)buffer[GYRO_XOUT_H_OFFSET] << 8) | buffer[GYRO_XOUT_L_OFFSET],
+        .gyro.y = ((int16_t)buffer[GYRO_YOUT_H_OFFSET] << 8) | buffer[GYRO_YOUT_L_OFFSET],
+        .gyro.z = ((int16_t)buffer[GYRO_ZOUT_H_OFFSET] << 8) | buffer[GYRO_ZOUT_L_OFFSET],
     };
-    /**
-     * Debug ESP_LOGI
-    */
-    ESP_LOGI(TAG, "x, y, z:  %.2f   %.2f   %.2f", convert_raw_accel_to_G(data.accelDataRaw.x), convert_raw_accel_to_G(data.accelDataRaw.y), convert_raw_accel_to_G(data.accelDataRaw.z));
-    // ESP_LOGI(TAG, "x, y, z:  %.2f   %.2f   %.2f", convert_raw_gyro_to_radPerS(data.gyroDataRaw.x), convert_raw_gyro_to_radPerS(data.gyroDataRaw.y), convert_raw_gyro_to_radPerS(data.gyroDataRaw.z));
-    /**
-        * Debug ESP_LOGI
-    */
-    return data;
+    mag_read(&data_raw);
+    log_data(&data_raw, MAG);
+    return data_raw;
 }
