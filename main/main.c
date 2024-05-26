@@ -1,53 +1,48 @@
-#include <stdio.h>
-#include <imu-manager.h>
+#include "freertos/FreeRTOS.h"
+#include "esp_log.h"
 
-ImuConfig_t conf = {
-    .sampleDivSetting = 0,
-    .fSyncSetting = FSYNC_DISABLED,
-    .dlpfSetting = DLPF_10Hz,
-    .fifoMode = ALLOW_OVERFLOW,
-    .fifoEnSetting =
-        0<<SLV0_FIFO_EN|\
-        0<<SLV1_FIFO_EN|\
-        0<<SLV2_FIFO_EN|\
-        0<<ACCEL_FIFO_EN|\
-        0<<ZG_FIFO_EN|\
-        0<<YG_FIFO_EN|\
-        0<<XG_FIFO_EN|\
-        0<<TEMP_FIFO_EN,
-    .intPinCfg =
-        1<<I2C_BYPASS_EN|\
-        0<<FSYNC_INT_MODE_EN|\
-        0<<ACTL_FSYNC|\
-        0<<INT_ANYRD_2CLEAR|\
-        0<<LATCH_INT_EN|\
-        0<<INT_OPEN|\
-        0<<ACTL,
-    .intPinEnable =
-        1<<DATA_RDY_EN|\
-        0<<I2C_MST_INT_EN|\
-        0<<FIFO_OFLOW_EN,
-    .gyroRangeSetting = GYRO_500DPS,
-    .fChoiceBSetting = FCHOICE_B_DISABLED,
-    .accelRangeSetting = ACCEL_2G,
-    .accelFChoiceBSetting = ACCEL_FCHOICE_B_DISABLED,
-    .accelDlpfSetting = ACCEL_DLPF_10p2Hz,
-    .pwrMgmtSetting =
-        INTERNAL_CLK<<CLKSEL|\
-        0<<TEMP_DIS|\
-        0<<CYCLE|\
-        0<<SLEEP|\
-        0<<DEVICE_RESET,
-    .magControlSetting = COUNTINIOUS_MODE_2<<MAG_OUTPUT_MODE,
-};
+#include "led_ao.h"
+#include "button_ao.h"
+#include "events_broker.h"
+#include "polling_ao.h"
+#include "imu_ao.h"
+
+static Broker broker;
+Active *AO_Broker = &broker.super;
+static Polling polling;
+Active *AO_Polling = &polling.super;
+
+static Led led;
+Active *AO_Led = &led.super;
+static Button button;
+Active *AO_Button = &button.super;
+static Imu imu;
+Active *AO_Imu = &imu.super;
 
 void app_main(void)
 {
-    imu_init(conf);
-    imu_who_am_i(AK8362_SENSOR_ADDR);
-    while(1)
-    {
-        imu_read_raw();
-    }
-    imu_deinit();
+    Broker_ctor(&broker);
+    Active_start(AO_Broker, "Broker thread", 4096, 20, tskNO_AFFINITY, 20);
+    
+    Polling_ctor(&polling);
+    Active_start(AO_Polling, "Polling thread", 2048, 11, tskNO_AFFINITY, 10);
+
+    Led_ctor(&led);
+    Active_start(AO_Led, "LED thread", 2048, 10, tskNO_AFFINITY, 10);
+
+    Button_ctor(&button);
+    Active_start(AO_Button, "Button thread", 2048, 1, tskNO_AFFINITY, 10);
+
+    Imu_ctor(&imu);
+    Active_start(AO_Imu, "Imu thread", 2048, 2, tskNO_AFFINITY, 10);
+
+    /**
+     * Subscriptions
+    */
+    Broker_subscribe(&broker, &(Event){ EV_POLLING_BUTTON_STATE_CHANGED , (void*)0 }, AO_Button);
+    Broker_subscribe(&broker, &(Event){ EV_BUTTON_PRESSED , (void*)0 }, AO_Led);
+    Broker_subscribe(&broker, &(Event){ EV_BUTTON_RELEASED , (void*)0 }, AO_Led);
+    Broker_subscribe(&broker, &(Event){ EV_BUTTON_HOLD , (void*)0 }, AO_Led);
+    Broker_subscribe(&broker, &(Event){ EV_BUTTON_DOUBLE_PRESS , (void*)0 }, AO_Led);
+    Broker_subscribe(&broker, &(Event){ EV_BUTTON_PRESSED , (void*)0 }, AO_Imu);
 }

@@ -1,4 +1,4 @@
-#include "include/imu-manager.h"
+#include "include/imu_ao.h"
 
 static const char *TAG = "imu-manager";
 
@@ -10,7 +10,45 @@ static const char *TAG = "imu-manager";
 #define I2C_MASTER_RX_BUF_DISABLE   0                          /*!< I2C master doesn't need buffer */
 #define I2C_MASTER_TIMEOUT_MS       1000
 
-static ImuConfig_t conf;
+static ImuConfig_t conf = {
+    .sampleDivSetting = 0,
+    .fSyncSetting = FSYNC_DISABLED,
+    .dlpfSetting = DLPF_10Hz,
+    .fifoMode = ALLOW_OVERFLOW,
+    .fifoEnSetting =
+        0<<SLV0_FIFO_EN|\
+        0<<SLV1_FIFO_EN|\
+        0<<SLV2_FIFO_EN|\
+        0<<ACCEL_FIFO_EN|\
+        0<<ZG_FIFO_EN|\
+        0<<YG_FIFO_EN|\
+        0<<XG_FIFO_EN|\
+        0<<TEMP_FIFO_EN,
+    .intPinCfg =
+        1<<I2C_BYPASS_EN|\
+        0<<FSYNC_INT_MODE_EN|\
+        0<<ACTL_FSYNC|\
+        0<<INT_ANYRD_2CLEAR|\
+        0<<LATCH_INT_EN|\
+        0<<INT_OPEN|\
+        0<<ACTL,
+    .intPinEnable =
+        1<<DATA_RDY_EN|\
+        0<<I2C_MST_INT_EN|\
+        0<<FIFO_OFLOW_EN,
+    .gyroRangeSetting = GYRO_500DPS,
+    .fChoiceBSetting = FCHOICE_B_DISABLED,
+    .accelRangeSetting = ACCEL_2G,
+    .accelFChoiceBSetting = ACCEL_FCHOICE_B_DISABLED,
+    .accelDlpfSetting = ACCEL_DLPF_10p2Hz,
+    .pwrMgmtSetting =
+        INTERNAL_CLK<<CLKSEL|\
+        0<<TEMP_DIS|\
+        0<<CYCLE|\
+        0<<SLEEP|\
+        0<<DEVICE_RESET,
+    .magControlSetting = COUNTINIOUS_MODE_2<<MAG_OUTPUT_MODE,
+};
 
 /**
  * @brief Read a sequence of bytes from a MPU9250 sensor registers
@@ -54,10 +92,9 @@ static esp_err_t i2c_master_init(void)
     return i2c_driver_install(i2c_master_port, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
 }
 
-void imu_init(ImuConfig_t config)
+static void imu_configure(ImuConfig_t config)
 {
     ESP_ERROR_CHECK(i2c_master_init());
-    imu_who_am_i(MPU9250_SENSOR_ADDR);
     ESP_ERROR_CHECK(imu_register_write_byte(MPU9250_SENSOR_ADDR, SMPLRT_DIV, config.sampleDivSetting));
     ESP_ERROR_CHECK(imu_register_write_byte(MPU9250_SENSOR_ADDR, CONFIG, (config.fifoMode<<FIFO_MODE_OFFSET)|(config.fSyncSetting<<FSYNC_OFFSET)|config.dlpfSetting));
     ESP_ERROR_CHECK(imu_register_write_byte(MPU9250_SENSOR_ADDR, FIFO_EN, config.fifoEnSetting));
@@ -69,20 +106,19 @@ void imu_init(ImuConfig_t config)
     ESP_ERROR_CHECK(imu_register_write_byte(MPU9250_SENSOR_ADDR, PWR_MGMT_1, config.intPinEnable));
     ESP_ERROR_CHECK(imu_register_write_byte(AK8362_SENSOR_ADDR, AK8362_CONTROL_1, config.magControlSetting));
     ESP_LOGI(TAG, "IMU initialized successfully");
-    conf = config;
 }
-void imu_deinit(void)
+static void imu_deinit(void)
 {
     ESP_ERROR_CHECK(i2c_driver_delete(I2C_MASTER_NUM));
     ESP_LOGI(TAG, "I2C de-initialized successfully");
 }
 
-void imu_reset(void)
+static void imu_reset(void)
 {
     ESP_ERROR_CHECK(imu_register_write_byte(MPU9250_SENSOR_ADDR, PWR_MGMT_1, 1 << DEVICE_RESET));
 }
 
-uint8_t imu_who_am_i(uint8_t device_addr)
+static uint8_t imu_who_am_i(uint8_t device_addr)
 {
     uint8_t data;
     esp_err_t ret;
@@ -95,28 +131,6 @@ uint8_t imu_who_am_i(uint8_t device_addr)
     ESP_LOGI(TAG, "IMU who am I response: %X", data);
     return data;
 }
-
-// AccelDataRaw_t imu_read_accel(void)
-// {
-//     AccelDataRaw_t data;
-//     uint8_t buffer[6];
-//     ESP_ERROR_CHECK(mpu9250_register_read(ACCEL_DATA_ADDR, buffer, 6));
-//     data.x = (uint16_t)(buffer[ACCEL_XOUT_H]<<8) + buffer[ACCEL_XOUT_L];
-//     data.y = (uint16_t)(buffer[ACCEL_YOUT_H]<<8) + buffer[ACCEL_YOUT_L];
-//     data.z = (uint16_t)(buffer[ACCEL_ZOUT_H]<<8) + buffer[ACCEL_ZOUT_L];
-
-//     /**
-//      * Debug ESP_LOGI
-//     */
-//     ESP_LOGI(TAG, "Accel read X: %u", data.x);
-//     ESP_LOGI(TAG, "Accel read Y: %u", data.y);
-//     ESP_LOGI(TAG, "Accel read Z: %u", data.z);
-//     /**
-//         * Debug ESP_LOGI
-//     */
-//     return data;
-// }
-
 
 static float map_int16_to_range(int16_t value, int16_t range)
 {
@@ -235,4 +249,80 @@ ImuData_t imu_read_raw(void)
     mag_read(&data_raw);
     log_data(&data_raw, MAG);
     return data_raw;
+}
+
+/*
+AO code
+*/
+//Forward declarations
+State Imu_init(Imu * const me, Event const * const e);
+State Imu_wait_for_button(Imu * const me, Event const * const e);
+State Imu_position_calculation(Imu * const me, Event const * const e);
+State Imu_position_calculation(Imu * const me, Event const * const e);
+
+State Imu_init(Imu * const me, Event const * const e)
+{
+    return transition(&me->super.super, (StateHandler)&Imu_wait_for_button);
+}
+
+State Imu_wait_for_button(Imu * const me, Event const * const e)
+{
+    State status;
+    switch (e->sig)
+    {
+    case ENTRY_SIG:
+        status = HANDLED_STATUS;
+        break;
+
+    case EV_BUTTON_PRESSED:
+        status = transition(&me->super.super, (StateHandler)&Imu_position_calculation);
+        break;
+
+    case EXIT_SIG:
+        status = HANDLED_STATUS;
+        break;
+    
+    default:
+        status = IGNORED_STATUS;
+        break;
+    }
+    return status;
+}
+
+State Imu_position_calculation(Imu * const me, Event const * const e)
+{
+    State status;
+    switch (e->sig)
+    {
+    case ENTRY_SIG:
+        TimeEvent_arm(&me->positionCalculationLoopTimer);
+        status = HANDLED_STATUS;
+        break;
+
+    case EV_BUTTON_PRESSED:
+        status = transition(&me->super.super, (StateHandler)&Imu_wait_for_button);
+        break;
+
+    case CALCULATE_POSITION_TIMER_SIG:
+        imu_read_raw();
+        status = HANDLED_STATUS;
+        break;
+
+    case EXIT_SIG:
+        TimeEvent_disarm(&me->positionCalculationLoopTimer);
+        status = HANDLED_STATUS;
+        break;
+    
+    default:
+        status = IGNORED_STATUS;
+        break;
+    }
+    return status;
+}
+
+void Imu_ctor(Imu * const me)
+{
+    imu_configure(conf);
+    Active_ctor(&me->super, (StateHandler)&Imu_init);
+    TimeEvent_ctor(&me->positionCalculationLoopTimer, "IMU timer", (TickType_t)(POSITION_CALCULATION_PERIOD/portTICK_PERIOD_MS), pdTRUE, CALCULATE_POSITION_TIMER_SIG, &me->super);
 }
