@@ -13,6 +13,7 @@
 */
 
 #define MAX_TIMERS 100
+#define MAX_CHILDREN_STATES 10
 
 typedef uint16_t Signal;
 
@@ -21,6 +22,7 @@ enum ReservedSignals
     INIT_SIG,
     ENTRY_SIG,
     EXIT_SIG,
+    DEFAULT_SIG,
     USER_SIG,
 };
 
@@ -39,26 +41,33 @@ typedef struct
  * Finite State Machine implementation
 */
 
-typedef struct Fsm Fsm; // Finite state machine struct forward declaration
+typedef struct Hsm Hsm; // Finite state machine struct forward declaration
 
-typedef enum { TRAN_STATUS, HANDLED_STATUS, IGNORED_STATUS, INIT_STATUS } State;
+typedef enum { TRAN_STATUS, HANDLED_STATUS, IGNORED_STATUS, INIT_STATUS, SUPER_STATUS } State;
 
-typedef State (*StateHandler)(Fsm * const me, Event const * const e);
+typedef State (*StateHandler)(Hsm * const me, Event const * const e);
 
-struct Fsm
+struct Hsm
 {
+    StateHandler parent;
     StateHandler state;
+    StateHandler target;
 };
 
-static inline State transition(Fsm * const me, StateHandler const target){
+static inline State transition(Hsm * const me, StateHandler const target){
+    me->target = target;
     me->state = target;
     return TRAN_STATUS;
 }
 
-void Fsm_ctor(Fsm * const me, StateHandler initial);
-void Fsm_init(Fsm * const me, Event const * const e);
-void Fsm_dispatch(Fsm * const me, Event const * const e);
+static inline State super(Hsm * const me, StateHandler const parent){
+    me->parent = parent;
+    return SUPER_STATUS;
+}
 
+void Hsm_ctor(Hsm * const me, StateHandler initial);
+void Hsm_init(Hsm * const me, Event const * const e);
+void Hsm_dispatch(Hsm * const me, Event const * const e);
 
 /**
  * Active object utils
@@ -72,7 +81,7 @@ typedef struct Active Active;
 
 struct Active
 {
-    Fsm super;
+    Hsm super;
     TaskHandle_t *task;
     QueueHandle_t queue;
     /*additional subclass data*/

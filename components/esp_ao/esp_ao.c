@@ -6,42 +6,88 @@
 static Event const entryEvt = { ENTRY_SIG, (void*)0 };
 static Event const exitEvt = { EXIT_SIG, (void*)0 };
 
-void Fsm_ctor(Fsm * const me, StateHandler initial)
+void Hsm_ctor(Hsm * const me, StateHandler initial)
 {
+    me->parent = (StateHandler)0;
     me->state = initial;
 }
 
-void Fsm_init(Fsm * const me, Event const * const e)
+void Hsm_init(Hsm * const me, Event const * const e)
 {
     assert(me->state != (StateHandler)0);
     (*me->state)(me, e);
     (*me->state)(me, &entryEvt);
 }
 
-void Fsm_dispatch(Fsm * const me, Event const * const e)
+uint8_t collectParentStates(Hsm * const me, StateHandler parrentStatesArray[]){
+    uint8_t parentIndex = 0;
+    State status = SUPER_STATUS;
+    while (status != IGNORED_STATUS)
+    {
+        status = (*me->parent)(me, &(Event){ DEFAULT_SIG, (void*)0 });
+        parrentStatesArray[parentIndex] = me->parent;
+        parentIndex++;
+    }
+    return parentIndex;
+}
+
+void findCommonParentState(StateHandler currentParents[], StateHandler targetParents[], uint8_t *currentParentIndex, uint8_t *targetParentIndex)
+{
+    for (uint8_t i = 0; i<*currentParentIndex; i++){
+        for (uint8_t j = 0; j<*targetParentIndex; j++){
+            if(currentParents[i] == targetParents[j]){
+                *currentParentIndex = i;
+                *targetParentIndex = j;
+                return;
+            }
+        }
+    }
+}
+
+void Hsm_dispatch(Hsm * const me, Event const * const e)
 {
     State status;
     StateHandler prevState = me->state;
     assert(me->state != (StateHandler)0);
     status = (*me->state)(me ,e);
+    
+    while (status == SUPER_STATUS)
+    {
+        status = (*me->parent)(me, e);
+    }
 
     if (status == TRAN_STATUS)
     {
+        //collect the parent states
+        // StateHandler currentParents[MAX_CHILDREN_STATES];
+        // StateHandler targetParents[MAX_CHILDREN_STATES];
+
+        // uint8_t currentParentsMaxIndex = collectParentStates(me, currentParents);
+        // uint8_t targetParentsMaxIndex = collectParentStates(me, targetParents);
+        // findCommonParentState(currentParents, targetParents, &currentParentsMaxIndex, &targetParentsMaxIndex);
+
         (*prevState)(me, &exitEvt);
-        (*me->state)(me, &entryEvt);
+        // for (uint8_t i = 0; i<currentParentsMaxIndex; i++){
+        //     (*currentParents[i])(me, &exitEvt);
+        // }
+        // for (int8_t i = targetParentsMaxIndex-1; i>=0; i--){
+        //     (*targetParents[i])(me, &entryEvt);
+        // }
+        status = (*me->state)(me, &entryEvt);
     }
+    ESP_LOGV("ESPAO", "\n\nIN DISPATCH\n\n");
 }
 
 void Active_ctor(Active * const me, StateHandler initial)
 {   
-    Fsm_ctor(&me->super, initial);
+    Hsm_ctor(&me->super, initial);
 }
 
 static void Active_eventLoop(void *pvParameters)
 {
     Active *me = (Active *)pvParameters;
 
-    Fsm_init(&me->super, (Event *)0);
+    Hsm_init(&me->super, (Event *)0);
 
     while (1)
     {
@@ -51,7 +97,8 @@ static void Active_eventLoop(void *pvParameters)
         xReturned = xQueueReceive(me->queue, (void *)&e, (TickType_t)10);
         if(xReturned == pdPASS)
         {
-            Fsm_dispatch(&me->super, &e);
+            printf("\n\nBeforeDispatch\n\n");
+            Hsm_dispatch(&me->super, &e);
         }
     }   
 }
