@@ -58,21 +58,21 @@ void Hsm_dispatch(Hsm * const me, Event const * const e)
 
     if (status == TRAN_STATUS)
     {
-        //collect the parent states
-        // StateHandler currentParents[MAX_CHILDREN_STATES];
-        // StateHandler targetParents[MAX_CHILDREN_STATES];
+        // collect the parent states
+        StateHandler currentParents[MAX_CHILDREN_STATES];
+        StateHandler targetParents[MAX_CHILDREN_STATES];
 
-        // uint8_t currentParentsMaxIndex = collectParentStates(me, currentParents);
-        // uint8_t targetParentsMaxIndex = collectParentStates(me, targetParents);
-        // findCommonParentState(currentParents, targetParents, &currentParentsMaxIndex, &targetParentsMaxIndex);
+        uint8_t currentParentsMaxIndex = collectParentStates(me, currentParents);
+        uint8_t targetParentsMaxIndex = collectParentStates(me, targetParents);
+        findCommonParentState(currentParents, targetParents, &currentParentsMaxIndex, &targetParentsMaxIndex);
 
         (*prevState)(me, &exitEvt);
-        // for (uint8_t i = 0; i<currentParentsMaxIndex; i++){
-        //     (*currentParents[i])(me, &exitEvt);
-        // }
-        // for (int8_t i = targetParentsMaxIndex-1; i>=0; i--){
-        //     (*targetParents[i])(me, &entryEvt);
-        // }
+        for (uint8_t i = 0; i<currentParentsMaxIndex; i++){
+            (*currentParents[i])(me, &exitEvt);
+        }
+        for (int8_t i = targetParentsMaxIndex-1; i>=0; i--){
+            (*targetParents[i])(me, &entryEvt);
+        }
         status = (*me->state)(me, &entryEvt);
     }
     ESP_LOGV("ESPAO", "\n\nIN DISPATCH\n\n");
@@ -97,7 +97,6 @@ static void Active_eventLoop(void *pvParameters)
         xReturned = xQueueReceive(me->queue, (void *)&e, (TickType_t)10);
         if(xReturned == pdPASS)
         {
-            printf("\n\nBeforeDispatch\n\n");
             Hsm_dispatch(&me->super, &e);
         }
     }   

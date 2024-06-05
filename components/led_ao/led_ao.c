@@ -45,7 +45,6 @@ State Led_init(Led * const me, Event const * const e)
 
 State Led_idle(Led * const me, Event const * const e)
 {
-    ESP_LOGI("LED", "in init");
     State status;
     switch (e->sig)
     {
