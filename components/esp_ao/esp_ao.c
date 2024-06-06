@@ -27,7 +27,6 @@ void findCommonParentState(StateHandler currentParents[], StateHandler targetPar
             if(currentParents[i] == targetParents[j]){
                 *currentParentIndex = i;
                 *targetParentIndex = j;
-                ESP_LOGI("HSM dispatch", "Common state: index1, index2, addr: %d, %d, %p", i, j, currentParents[i]);
                 return;
             }
         }

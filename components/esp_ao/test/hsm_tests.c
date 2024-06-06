@@ -36,10 +36,7 @@ typedef enum {
     TRAN2_SIG,
 } MockSigs;
 
-Event tranEvent = { TRAN_SIG, (void*)0};
-
-void Mock_ctor(Mock * const me){
-    Active_ctor(&me->super, (StateHandler)&Mock_init);
+void reset_flags(Mock * const me){
     me->commonStateEntered = false;
     me->commonStateExited = false;
     me->substate11StateEntered = false;
@@ -54,6 +51,11 @@ void Mock_ctor(Mock * const me){
     me->substate23StateExited = false;
     me->transitionReached = false;
     me->tranSigReceived = false;
+}
+
+void Mock_ctor(Mock * const me){
+    Active_ctor(&me->super, (StateHandler)&Mock_init);
+    reset_flags(me);
 }
 
 State Mock_init(Mock * const me, Event const * const e){
@@ -190,6 +192,11 @@ State Mock_substate23(Mock * const me, Event const * const e)
         status = HANDLED_STATUS;
         break;
     
+    case TRAN2_SIG:
+        me->tranSigReceived = true;
+        status = transition(&me->super.super, (StateHandler)&Mock_substate11);
+        break;
+
     case EXIT_SIG:
         me->substate23StateExited = true;
         status = HANDLED_STATUS;
@@ -205,7 +212,7 @@ State Mock_substate23(Mock * const me, Event const * const e)
 void testWait(uint16_t delayInTicks){
     int i = 0;
     while(i<delayInTicks){
-        printf(".");
+        printf(" ");
         i++;
     }
     ESP_LOGI("TEST DONE WAITING", "%d", i);
@@ -230,8 +237,8 @@ TEST_CASE("AO HSM startup and transition from init to entry substate12", "espao 
 
 TEST_CASE("AO HSM transition from nested 12 to nested 23", "espao HSM"){
     //Reset common entry and exit flags to check if they are changing on transiton from nested to nested
-    mock.commonStateEntered = false;
-    mock.commonStateExited = false;
+    reset_flags(&mock);
+    Event tranEvent = { TRAN_SIG, (void*)0};
     Active_post(mockAO, &tranEvent);
     testWait(200U);
     TEST_ASSERT(mock.tranSigReceived == true);
@@ -244,4 +251,19 @@ TEST_CASE("AO HSM transition from nested 12 to nested 23", "espao HSM"){
     TEST_ASSERT_MESSAGE(mock.substate22StateEntered == true, "State22 was not enetred!");
     TEST_ASSERT_MESSAGE(mock.substate23StateEntered == true, "State23 was not enetred!");
     TEST_ASSERT(mock.transitionReached == true);
+}
+
+TEST_CASE("AO HSM transition from nested 23 to nested 11 with EVENT bubbling to nested 21", "espao HSM"){
+    reset_flags(&mock);
+    Event tran2Event = { TRAN2_SIG, (void*)0};
+    Active_post(mockAO, &tran2Event);
+    testWait(200U);
+    TEST_ASSERT(mock.tranSigReceived == true);
+    TEST_ASSERT_MESSAGE(mock.super.super.state == (StateHandler)&Mock_substate11, "Mock HSM is not in the substate23!");
+    TEST_ASSERT_MESSAGE(mock.commonStateExited == false, "Common was exited!");
+    TEST_ASSERT_MESSAGE(mock.substate23StateExited == true, "State12 was not exited!");
+    TEST_ASSERT_MESSAGE(mock.substate22StateExited == true, "State11 was not exited!");
+    TEST_ASSERT_MESSAGE(mock.substate21StateExited == true, "State11 was not exited!");
+    TEST_ASSERT_MESSAGE(mock.commonStateEntered == false, "Common was enetred!");
+    TEST_ASSERT_MESSAGE(mock.substate11StateEntered == true, "State21 was not enetred!");
 }
