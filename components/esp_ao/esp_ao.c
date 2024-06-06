@@ -33,6 +33,11 @@ void findCommonParentState(StateHandler currentParents[], StateHandler targetPar
     }
 }
 
+State Hsm_top(Hsm * const me, Event const * const e)
+{
+    return IGNORED_STATUS;
+}
+
 void Hsm_ctor(Hsm * const me, StateHandler initial)
 {
     me->parent = (StateHandler)0;

@@ -66,6 +66,7 @@ static inline State super(Hsm * const me, StateHandler const parent){
 void Hsm_ctor(Hsm * const me, StateHandler initial);
 void Hsm_init(Hsm * const me, Event const * const e);
 void Hsm_dispatch(Hsm * const me, Event const * const e);
+State Hsm_top(Hsm * const me, Event const * const e);
 
 /**
  * Active object utils

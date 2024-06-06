@@ -33,11 +33,6 @@ static void Led_toggle(bool currentState)
     ESP_ERROR_CHECK(gpio_set_level(LED_PIN, !currentState));
 }
 
-State Led_top(Led * const me, Event const * const e)
-{
-    return IGNORED_STATUS;
-}
-
 State Led_init(Led * const me, Event const * const e)
 {
     return transition(&me->super.super, (StateHandler)&Led_idle);
@@ -63,7 +58,7 @@ State Led_idle(Led * const me, Event const * const e)
         break;
     
     default:
-        status = super(&me->super.super, (StateHandler)&Led_top);
+        status = super(&me->super.super, (StateHandler)&Hsm_top);
         break;
     }
     return status;
@@ -111,7 +106,7 @@ State Led_blink(Led * const me, Event const * const e)
         break;
     
     default:
-        status = super(&me->super.super, (StateHandler)&Led_top);
+        status = super(&me->super.super, (StateHandler)&Hsm_top);
         break;
     }
     return status;
@@ -140,7 +135,7 @@ State Led_solid(Led * const me, Event const * const e){
         break;
     
     default:
-        status = super(&me->super.super, (StateHandler)&Led_top);
+        status = super(&me->super.super, (StateHandler)&Hsm_top);
         break;
     }
     return status;
