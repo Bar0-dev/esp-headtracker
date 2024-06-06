@@ -27,7 +27,7 @@ void app_main(void)
     Active_start(AO_Button, "Button thread", 2048, 1, tskNO_AFFINITY, 10);
 
     Imu_ctor(&imu);
-    Active_start(AO_Imu, "Imu thread", 2048, 2, tskNO_AFFINITY, 10);
+    Active_start(AO_Imu, "Imu thread", 4096, 2, tskNO_AFFINITY, 10);
 
     /**
      * Subscriptions
@@ -36,5 +36,5 @@ void app_main(void)
     Broker_subscribe(&broker, &(Event){ EV_BUTTON_RELEASED , (void*)0 }, AO_Led);
     Broker_subscribe(&broker, &(Event){ EV_BUTTON_HOLD , (void*)0 }, AO_Led);
     Broker_subscribe(&broker, &(Event){ EV_BUTTON_DOUBLE_PRESS , (void*)0 }, AO_Led);
-    // Broker_subscribe(&broker, &(Event){ EV_BUTTON_PRESSED , (void*)0 }, AO_Imu);
+    Broker_subscribe(&broker, &(Event){ EV_BUTTON_PRESSED , (void*)0 }, AO_Imu);
 }

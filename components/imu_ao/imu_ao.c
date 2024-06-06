@@ -1,6 +1,6 @@
 #include "include/imu_ao.h"
 
-static const char *TAG = "imu-manager";
+static const char *TAG = "imu_ao";
 
 #define I2C_MASTER_SCL_IO           22      /*!< GPIO number used for I2C master clock */
 #define I2C_MASTER_SDA_IO           21      /*!< GPIO number used for I2C master data  */
@@ -322,7 +322,7 @@ State Imu_position_calculation(Imu * const me, Event const * const e)
 
 void Imu_ctor(Imu * const me)
 {
-    imu_configure(conf);
     Active_ctor(&me->super, (StateHandler)&Imu_init);
     TimeEvent_ctor(&me->positionCalculationLoopTimer, "IMU timer", (TickType_t)(POSITION_CALCULATION_PERIOD/portTICK_PERIOD_MS), pdTRUE, CALCULATE_POSITION_TIMER_SIG, &me->super);
+    imu_configure(conf);
 }
