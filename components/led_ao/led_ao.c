@@ -33,6 +33,42 @@ static void Led_toggle(bool currentState)
     ESP_ERROR_CHECK(gpio_set_level(LED_PIN, !currentState));
 }
 
+State Led_top(Led * const me, Event const * const e)
+{
+    return IGNORED_STATUS;
+}
+
+State Led_init(Led * const me, Event const * const e)
+{
+    return transition(&me->super.super, (StateHandler)&Led_idle);
+}
+
+State Led_idle(Led * const me, Event const * const e)
+{
+    State status;
+    switch (e->sig)
+    {
+    case ENTRY_SIG:
+        me->ledState = LED_OFF;
+        Led_off();
+        status = HANDLED_STATUS;
+        break;
+    
+    case EXIT_SIG:
+        status = HANDLED_STATUS;
+        break;
+    
+    case EV_BUTTON_PRESSED:
+        status = transition(&me->super.super, (StateHandler)&Led_blink);
+        break;
+    
+    default:
+        status = super(&me->super.super, (StateHandler)&Led_top);
+        break;
+    }
+    return status;
+}
+
 State Led_blink(Led * const me, Event const * const e)
 {
     State status;
@@ -75,41 +111,10 @@ State Led_blink(Led * const me, Event const * const e)
         break;
     
     default:
-        status = IGNORED_STATUS;
+        status = super(&me->super.super, (StateHandler)&Led_top);
         break;
     }
     return status;
-}
-
-State Led_idle(Led * const me, Event const * const e)
-{
-    State status;
-    switch (e->sig)
-    {
-    case ENTRY_SIG:
-        me->ledState = LED_OFF;
-        Led_off();
-        status = HANDLED_STATUS;
-        break;
-    
-    case EXIT_SIG:
-        status = HANDLED_STATUS;
-        break;
-    
-    case EV_BUTTON_PRESSED:
-        status = transition(&me->super.super, (StateHandler)&Led_blink);
-        break;
-    
-    default:
-        status = IGNORED_STATUS;
-        break;
-    }
-    return status;
-}
-
-State Led_init(Led * const me, Event const * const e)
-{
-    return transition(&me->super.super, (StateHandler)&Led_idle);
 }
 
 State Led_solid(Led * const me, Event const * const e){
@@ -135,7 +140,7 @@ State Led_solid(Led * const me, Event const * const e){
         break;
     
     default:
-        status = IGNORED_STATUS;
+        status = super(&me->super.super, (StateHandler)&Led_top);
         break;
     }
     return status;
