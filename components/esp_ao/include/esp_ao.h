@@ -51,11 +51,9 @@ struct Hsm
 {
     StateHandler parent;
     StateHandler state;
-    StateHandler target;
 };
 
 static inline State transition(Hsm * const me, StateHandler const target){
-    me->target = target;
     me->state = target;
     return TRAN_STATUS;
 }
