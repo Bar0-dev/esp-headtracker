@@ -4,10 +4,14 @@
 #include "freertos/timers.h"
 #include "esp_log.h"
 
+State Led_init(Led * const me, Event const * const e);
+State Led_top(Led * const me, Event const * const e);
 State Led_idle(Led * const me, Event const * const e);
 State Led_blink(Led * const me, Event const * const e);
+State Led_blink_fast(Led * const me, Event const * const e);
+State Led_blink_medium(Led * const me, Event const * const e);
+State Led_blink_slow(Led * const me, Event const * const e);
 State Led_solid(Led * const me, Event const * const e);
-State Led_init(Led * const me, Event const * const e);
 
 static const gpio_config_t gpioConfig = 
 {
@@ -38,6 +42,46 @@ State Led_init(Led * const me, Event const * const e)
     return transition(&me->super.super, (StateHandler)&Led_idle);
 }
 
+State Led_top(Led * const me, Event const * const e)
+{
+    State status;
+    switch (e->sig)
+    {
+    case ENTRY_SIG:
+        status = HANDLED_STATUS;
+        break;
+    
+    case EXIT_SIG:
+        status = HANDLED_STATUS;
+        break;
+    
+    case EV_IMU_IDLE:
+        status = transition(&me->super.super, (StateHandler)&Led_idle);
+        break;
+    
+    case EV_IMU_READING:
+        status = transition(&me->super.super, (StateHandler)&Led_solid);
+        break;
+    
+    case EV_IMU_CALIBRATION_READY:
+        status = transition(&me->super.super, (StateHandler)&Led_blink_slow);
+        break;
+    
+    case EV_IMU_CALIBRATION_IN_PROGRESS:
+        status = transition(&me->super.super, (StateHandler)&Led_blink_fast);
+        break;
+    
+    case EV_IMU_CALIBRATION_DONE:
+        status = transition(&me->super.super, (StateHandler)&Led_blink_medium);
+        break;
+    
+    default:
+        status = super(&me->super.super, (StateHandler)&Hsm_top);
+        break;
+    }
+    return status;
+}
+
 State Led_idle(Led * const me, Event const * const e)
 {
     State status;
@@ -53,12 +97,8 @@ State Led_idle(Led * const me, Event const * const e)
         status = HANDLED_STATUS;
         break;
     
-    case EV_BUTTON_PRESSED:
-        status = transition(&me->super.super, (StateHandler)&Led_blink);
-        break;
-    
     default:
-        status = super(&me->super.super, (StateHandler)&Hsm_top);
+        status = super(&me->super.super, (StateHandler)&Led_top);
         break;
     }
     return status;
@@ -80,33 +120,79 @@ State Led_blink(Led * const me, Event const * const e)
         status = HANDLED_STATUS;
         break;
         
-    case EV_BUTTON_PRESSED:   
-        if(me->blinkPeriod == BLINK_FAST){
-            me->blinkPeriod = BLINK_SLOW;
-        } else if(me->blinkPeriod == BLINK_MEDIUM){
-            me->blinkPeriod = BLINK_FAST;
-        } else if(me->blinkPeriod == BLINK_SLOW) {
-            me->blinkPeriod = BLINK_MEDIUM;
-        }
-        TimeEvent_change_period(&me->ledTimer, (TickType_t)((uint16_t)me->blinkPeriod/portTICK_PERIOD_MS));
-        status = HANDLED_STATUS;
-        break;
-    
-    case EV_BUTTON_HOLD:
-        status = transition(&me->super.super, (StateHandler)&Led_solid);
-        break;
-        
-    case EV_BUTTON_DOUBLE_PRESS:   
-        status = transition(&me->super.super, (StateHandler)&Led_idle);
-        break;
-
     case EXIT_SIG:
         TimeEvent_disarm(&me->ledTimer);
         status = HANDLED_STATUS;
         break;
     
     default:
-        status = super(&me->super.super, (StateHandler)&Hsm_top);
+        status = super(&me->super.super, (StateHandler)&Led_top);
+        break;
+    }
+    return status;
+}
+
+State Led_blink_fast(Led * const me, Event const * const e)
+{
+    State status;
+    switch (e->sig)
+    {
+    case ENTRY_SIG:
+        me->blinkPeriod = BLINK_FAST;
+        TimeEvent_change_period(&me->ledTimer, (TickType_t)((uint16_t)me->blinkPeriod/portTICK_PERIOD_MS));
+        status = HANDLED_STATUS;
+        break;
+    
+    case EXIT_SIG:
+        status = HANDLED_STATUS;
+        break;
+    
+    default:
+        status = super(&me->super.super, (StateHandler)&Led_blink);
+        break;
+    }
+    return status;
+}
+
+State Led_blink_medium(Led * const me, Event const * const e)
+{
+    State status;
+    switch (e->sig)
+    {
+    case ENTRY_SIG:
+        me->blinkPeriod = BLINK_MEDIUM;
+        TimeEvent_change_period(&me->ledTimer, (TickType_t)((uint16_t)me->blinkPeriod/portTICK_PERIOD_MS));
+        status = HANDLED_STATUS;
+        break;
+    
+    case EXIT_SIG:
+        status = HANDLED_STATUS;
+        break;
+    
+    default:
+        status = super(&me->super.super, (StateHandler)&Led_blink);
+        break;
+    }
+    return status;
+}
+
+State Led_blink_slow(Led * const me, Event const * const e)
+{
+    State status;
+    switch (e->sig)
+    {
+    case ENTRY_SIG:
+        me->blinkPeriod = BLINK_SLOW;
+        TimeEvent_change_period(&me->ledTimer, (TickType_t)((uint16_t)me->blinkPeriod/portTICK_PERIOD_MS));
+        status = HANDLED_STATUS;
+        break;
+    
+    case EXIT_SIG:
+        status = HANDLED_STATUS;
+        break;
+    
+    default:
+        status = super(&me->super.super, (StateHandler)&Led_blink);
         break;
     }
     return status;
@@ -122,20 +208,12 @@ State Led_solid(Led * const me, Event const * const e){
         status = HANDLED_STATUS;
         break;
     
-    case EV_BUTTON_PRESSED:   
-        status = transition(&me->super.super, (StateHandler)&Led_blink);
-        break;
-        
-    case EV_BUTTON_DOUBLE_PRESS:   
-        status = transition(&me->super.super, (StateHandler)&Led_idle);
-        break;
-
     case EXIT_SIG:
         status = HANDLED_STATUS;
         break;
     
     default:
-        status = super(&me->super.super, (StateHandler)&Hsm_top);
+        status = super(&me->super.super, (StateHandler)&Led_top);
         break;
     }
     return status;

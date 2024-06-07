@@ -36,6 +36,13 @@ typedef struct
 
 typedef struct 
 {
+    int32_t x;
+    int32_t y;
+    int32_t z;
+} BufferVector_t;
+
+typedef struct 
+{
     float x;
     float y;
     float z;
@@ -50,31 +57,77 @@ typedef struct
     RawVector_t mag;
 } ImuData_t;
 
+typedef struct
+{
+    Vector_t accel;
+    Vector_t gyro;
+    Vector_t mag;
+} ImuDataNormalized_t;
+
 typedef enum
 {
+    NO_SENSOR,
     ACCEL,
     GYRO,
     TEMP,
     MAG
 } SensorType_t;
 
+typedef enum
+{
+    NO_AXIS,
+    X_AXIS,
+    Y_AXIS,
+    Z_AXIS,
+} Axis_t;
+
+typedef struct
+{
+    BufferVector_t accel;
+    BufferVector_t gyro;
+    BufferVector_t mag;
+
+} CalibrationBuffer_t;
+
+
 /*
 IMU AO code
 */
 
-#define POSITION_CALCULATION_PERIOD 10 //calculation period in ms
+#define READ_PERIOD 10 //calculation period in ms
+#define PRE_CALIBRATION_PERIOD 1*1000 //calculation period in ms (x*1000[ms] = x[s])
+#define ACCEL_GYRO_CALIBRATION_PERIOD 3*1000 //calculation period in ms (x*1000[ms] = x[s])
+#define MAG_CALIBRATION_PERIOD 10*1000 //calculation period in ms (x*1000[ms] = x[s])
 
 typedef struct
 {
     Active super;
-    TimeEvent positionCalculationLoopTimer;
+    ImuData_t data;
+    SensorType_t calibrationSensor;
+    Axis_t calibrationAxis;
+    uint16_t samples;
+    BufferVector_t buffer;
+    ImuData_t calibrationOffsets;
+    bool calibrationSamplingInProgress;
+
+    TimeEvent readTimer;
+    TimeEvent calibrationTimer;
+    TimeEvent preCalibrationTimer;
 } Imu;
 
 enum ImuEventSignals
 {
-    CALCULATE_POSITION_TIMER_SIG = LAST_EVENT_FLAG,
+    IMU_READ_TIMEOUT_SIG = LAST_EVENT_FLAG,
+    IMU_CALIBRATION_TIMEOUT_SIG,
+    IMU_PRE_CALIBRATION_TIMEOUT_SIG,
+    IMU_AXIS_CAL_DONE,
 };
 
 void Imu_ctor(Imu * const me);
+
+/**
+ * Active objects
+*/
+extern Active *AO_Broker;
 
 #endif

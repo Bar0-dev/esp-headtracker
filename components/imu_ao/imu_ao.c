@@ -132,60 +132,72 @@ static uint8_t imu_who_am_i(uint8_t device_addr)
     return data;
 }
 
+//SLOW!!
 static float map_int16_to_range(int16_t value, int16_t range)
 {
     return ((float)value-INT16_MIN)*2*range/(INT16_MAX-INT16_MIN)-range;
 }
+//SLOW!!
 
-static float convert_raw_accel_to_G(int16_t raw)
+//SLOW!!
+static void convert_raw_accel_to_G(RawVector_t const * const rawVector, Vector_t * const vector)
 {
     AccelRangeConf_t range = conf.accelRangeSetting;
-    float calc = 0;
+    uint8_t scale;
 
     switch (range)
     {
     case ACCEL_2G:
-        calc = map_int16_to_range(raw, 2);
+        scale = 2;
         break;
     case ACCEL_4G:
-        calc = map_int16_to_range(raw, 4);
+        scale = 4;
         break;
     case ACCEL_8G:
-        calc = map_int16_to_range(raw, 8);
+        scale = 8;
         break;
     case ACCEL_16G:
-        calc = map_int16_to_range(raw, 16);
+        scale = 16;
         break;
     default:
         break;
     }
-    return calc;
+    vector->x = map_int16_to_range(rawVector->x, scale);
+    vector->y = map_int16_to_range(rawVector->y, scale);
+    vector->z = map_int16_to_range(rawVector->z, scale);
+    return;
 }
+//SLOW
 
-static float convert_raw_gyro_to_radPerS(int16_t raw)
+//SLOW
+static void convert_raw_gyro_to_radPerS(RawVector_t const * const rawVector, Vector_t * const vector)
 {
-    GyroRangeConf_t range = conf.gyroRangeSetting;
-    float calc = 0;
+    AccelRangeConf_t range = conf.accelRangeSetting;
+    uint16_t scale;
 
     switch (range)
     {
     case GYRO_250DPS:
-        calc = map_int16_to_range(raw, 250);
+        scale = 250;
         break;
     case GYRO_500DPS:
-        calc = map_int16_to_range(raw, 500);
+        scale = 500;
         break;
     case GYRO_1000DPS:
-        calc = map_int16_to_range(raw, 1000);
+        scale = 1000;
         break;
     case GYRO_2000DPS:
-        calc = map_int16_to_range(raw, 2000);
+        scale = 2000;
         break;
     default:
         break;
     }
-    return calc;
+    vector->x = map_int16_to_range(rawVector->x, scale);
+    vector->y = map_int16_to_range(rawVector->y, scale);
+    vector->z = map_int16_to_range(rawVector->z, scale);
+    return;
 }
+//SLOW
 
 static void mag_read(ImuData_t * data_raw)
 {
@@ -205,15 +217,11 @@ static void log_data(ImuData_t * data, SensorType_t sensor_type)
     switch (sensor_type)
     {
     case ACCEL:
-        data_to_show.x = convert_raw_accel_to_G(data->accel.x);
-        data_to_show.y = convert_raw_accel_to_G(data->accel.y);
-        data_to_show.z = convert_raw_accel_to_G(data->accel.z);
+        convert_raw_accel_to_G(&data->accel, &data_to_show);
         break;
 
     case GYRO:
-        data_to_show.x = convert_raw_gyro_to_radPerS(data->gyro.x);
-        data_to_show.y = convert_raw_gyro_to_radPerS(data->gyro.y);
-        data_to_show.z = convert_raw_gyro_to_radPerS(data->gyro.z);
+        convert_raw_gyro_to_radPerS(&data->gyro, &data_to_show);
         break;
 
     case MAG:
@@ -228,44 +236,161 @@ static void log_data(ImuData_t * data, SensorType_t sensor_type)
     ESP_LOGI(TAG, "x, y, z:  %.2f   %.2f   %.2f", data_to_show.x,  data_to_show.y,  data_to_show.z);
 }
 
-ImuData_t imu_read_raw(void)
+static void imu_read_raw(ImuData_t * data_raw)
 {
     uint8_t buffer[14];
-    uint8_t interruptSignal = 0;
-    while (interruptSignal == 0)
-    {
-        ESP_ERROR_CHECK(imu_register_read(MPU9250_SENSOR_ADDR, INT_STATUS, &interruptSignal, 1));
-        // ESP_LOGI(TAG, "Interrupt signal: %u", interruptSignal);
-    }
+    // uint8_t interruptSignal = 0;
+    // while (interruptSignal == 0)
+    // {
+    //     ESP_ERROR_CHECK(imu_register_read(MPU9250_SENSOR_ADDR, INT_STATUS, &interruptSignal, 1));
+    //     // ESP_LOGI(TAG, "Interrupt signal: %u", interruptSignal);
+    // }
     ESP_ERROR_CHECK(imu_register_read(MPU9250_SENSOR_ADDR, ACCEL_XOUT_H, buffer, 14));
-    ImuData_t data_raw = {
-        .accel.x = ((int16_t)buffer[ACCEL_XOUT_H_OFFSET] << 8) | buffer[ACCEL_XOUT_L_OFFSET],
-        .accel.y = ((int16_t)buffer[ACCEL_YOUT_H_OFFSET] << 8) | buffer[ACCEL_YOUT_L_OFFSET],
-        .accel.z = ((int16_t)buffer[ACCEL_ZOUT_H_OFFSET] << 8) | buffer[ACCEL_ZOUT_L_OFFSET],
-        .gyro.x = ((int16_t)buffer[GYRO_XOUT_H_OFFSET] << 8) | buffer[GYRO_XOUT_L_OFFSET],
-        .gyro.y = ((int16_t)buffer[GYRO_YOUT_H_OFFSET] << 8) | buffer[GYRO_YOUT_L_OFFSET],
-        .gyro.z = ((int16_t)buffer[GYRO_ZOUT_H_OFFSET] << 8) | buffer[GYRO_ZOUT_L_OFFSET],
-    };
-    mag_read(&data_raw);
-    log_data(&data_raw, MAG);
-    return data_raw;
+    data_raw->accel.x = ((int16_t)buffer[ACCEL_XOUT_H_OFFSET] << 8) | buffer[ACCEL_XOUT_L_OFFSET],
+    data_raw->accel.y = ((int16_t)buffer[ACCEL_YOUT_H_OFFSET] << 8) | buffer[ACCEL_YOUT_L_OFFSET],
+    data_raw->accel.z = ((int16_t)buffer[ACCEL_ZOUT_H_OFFSET] << 8) | buffer[ACCEL_ZOUT_L_OFFSET],
+    data_raw->gyro.x = ((int16_t)buffer[GYRO_XOUT_H_OFFSET] << 8) | buffer[GYRO_XOUT_L_OFFSET],
+    data_raw->gyro.y = ((int16_t)buffer[GYRO_YOUT_H_OFFSET] << 8) | buffer[GYRO_YOUT_L_OFFSET],
+    data_raw->gyro.z = ((int16_t)buffer[GYRO_ZOUT_H_OFFSET] << 8) | buffer[GYRO_ZOUT_L_OFFSET],
+    mag_read(data_raw);
+    // log_data(&data_raw, MAG);
+    return;
+}
+
+static void addSample(RawVector_t * const rawVector, BufferVector_t * const buffer, Axis_t axis)
+{
+    switch (axis)
+    {
+    case X_AXIS:
+        buffer->x += rawVector->x;
+        break;
+
+    case Y_AXIS:
+        buffer->y += rawVector->y;
+        break;
+        
+    case Z_AXIS:
+        buffer->z += rawVector->z;
+        break;
+    
+    default:
+        buffer->x += rawVector->x;
+        buffer->y += rawVector->y;
+        buffer->z += rawVector->z;
+        break;
+    }
+}
+
+static void updateBuffer(ImuData_t * const data_raw, BufferVector_t * const buffer, SensorType_t sensor, Axis_t axis)
+{
+    switch (sensor)
+    {
+    case ACCEL:
+        addSample(&data_raw->accel, buffer, axis);
+        break;
+    
+    case GYRO:
+        addSample(&data_raw->gyro, buffer, axis);
+        break;
+
+    case MAG:
+        addSample(&data_raw->mag, buffer, axis);
+        break;
+    
+    default:
+        break;
+    }
+}
+
+static void calculateAxisOffset(BufferVector_t const * const buffer, RawVector_t * const sensorOffset, uint16_t samples, Axis_t axis)
+{
+    switch (axis)
+    {
+    case X_AXIS:
+        sensorOffset->x = buffer->x/samples;
+        break;
+    
+    case Y_AXIS:
+        sensorOffset->y = buffer->y/samples;
+        break;
+    
+    case Z_AXIS:
+        sensorOffset->z = buffer->z/samples;
+        break;
+    
+    case NO_AXIS:
+        sensorOffset->x = buffer->x/samples;
+        sensorOffset->y = buffer->y/samples;
+        sensorOffset->z = buffer->z/samples;
+        break;
+    
+    default:
+        break;
+    }
+}
+
+static void calculateOffsets(BufferVector_t const * const buffer, ImuData_t * const offsets, uint16_t samples, SensorType_t sensor, Axis_t axis)
+{
+    switch (sensor)
+    {
+    case ACCEL:
+        calculateAxisOffset(buffer, &offsets->accel, samples, axis);
+        break;
+    
+    case GYRO:
+        calculateAxisOffset(buffer, &offsets->gyro, samples, axis);
+        break;
+    
+    case MAG:
+        calculateAxisOffset(buffer, &offsets->mag, samples, axis);
+        break;
+    
+    default:
+        break;
+    }
+}
+
+static void applyOffsets(ImuData_t * const data, ImuData_t const * const offsets)
+{
+    data->accel.x -= offsets->accel.x;
+    data->accel.y -= offsets->accel.y;
+    data->accel.z -= offsets->accel.z;
+    data->gyro.x -= offsets->gyro.x;
+    data->gyro.y -= offsets->gyro.y;
+    data->gyro.z -= offsets->gyro.z;
+    data->mag.x -= offsets->mag.x;
+    data->mag.y -= offsets->mag.y;
+    data->mag.z -= offsets->mag.z;
 }
 
 /*
 AO code
 */
 //Forward declarations
+
+static void resetBufferAndSamples(Imu * const me)
+{
+    me->buffer.x = 0;
+    me->buffer.y = 0;
+    me->buffer.z = 0;
+    me->samples = 0;
+}
+
 State Imu_init(Imu * const me, Event const * const e);
-State Imu_wait_for_button(Imu * const me, Event const * const e);
-State Imu_position_calculation(Imu * const me, Event const * const e);
-State Imu_position_calculation(Imu * const me, Event const * const e);
+State Imu_top(Imu * const me, Event const * const e);
+State Imu_idle(Imu * const me, Event const * const e);
+State Imu_read(Imu * const me, Event const * const e);
+State Imu_calibration(Imu * const me, Event const * const e);
+State Imu_cal_accel(Imu * const me, Event const * const e);
+State Imu_cal_gyro(Imu * const me, Event const * const e);
+// State Imu_cal_mag(Imu * const me, Event const * const e);
 
 State Imu_init(Imu * const me, Event const * const e)
 {
-    return transition(&me->super.super, (StateHandler)&Imu_wait_for_button);
+    return transition(&me->super.super, (StateHandler)&Imu_idle);
 }
 
-State Imu_wait_for_button(Imu * const me, Event const * const e)
+State Imu_top(Imu * const me, Event const * const e)
 {
     State status;
     switch (e->sig)
@@ -275,7 +400,11 @@ State Imu_wait_for_button(Imu * const me, Event const * const e)
         break;
 
     case EV_BUTTON_PRESSED:
-        status = transition(&me->super.super, (StateHandler)&Imu_position_calculation);
+        status = transition(&me->super.super, (StateHandler)&Imu_read);
+        break;
+
+    case EV_BUTTON_HOLD:
+        status = transition(&me->super.super, (StateHandler)&Imu_calibration);
         break;
 
     case EXIT_SIG:
@@ -283,46 +412,191 @@ State Imu_wait_for_button(Imu * const me, Event const * const e)
         break;
     
     default:
-        status = IGNORED_STATUS;
+        status = super(&me->super.super, (StateHandler)&Hsm_top);
         break;
     }
     return status;
 }
 
-State Imu_position_calculation(Imu * const me, Event const * const e)
+State Imu_idle(Imu * const me, Event const * const e)
 {
     State status;
+    Event evt = { LAST_EVENT_FLAG, (void *)0 };
     switch (e->sig)
     {
     case ENTRY_SIG:
-        TimeEvent_arm(&me->positionCalculationLoopTimer);
+        evt.sig = EV_IMU_IDLE;
+        Active_post(AO_Broker, &evt);
+        status = HANDLED_STATUS;
+        break;
+
+    case EXIT_SIG:
+        status = HANDLED_STATUS;
+        break;
+    
+    default:
+        status = super(&me->super.super, (StateHandler)&Imu_top);
+        break;
+    }
+    return status;
+}
+
+State Imu_read(Imu * const me, Event const * const e)
+{
+    State status;
+    Event evt = { LAST_EVENT_FLAG, (void *)0 };
+    switch (e->sig)
+    {
+    case ENTRY_SIG:
+        evt.sig = EV_IMU_READING;
+        Active_post(AO_Broker, &evt);
+        TimeEvent_arm(&me->readTimer);
         status = HANDLED_STATUS;
         break;
 
     case EV_BUTTON_PRESSED:
-        status = transition(&me->super.super, (StateHandler)&Imu_wait_for_button);
+        status = transition(&me->super.super, (StateHandler)&Imu_idle);
         break;
 
-    case CALCULATE_POSITION_TIMER_SIG:
-        imu_read_raw();
+    case IMU_READ_TIMEOUT_SIG:
+        imu_read_raw(&me->data);
+        applyOffsets(&me->data, &me->calibrationOffsets);
+        // log_data(&me->data, ACCEL);
+        log_data(&me->calibrationOffsets, ACCEL);
         status = HANDLED_STATUS;
         break;
 
     case EXIT_SIG:
-        TimeEvent_disarm(&me->positionCalculationLoopTimer);
+        TimeEvent_disarm(&me->readTimer);
         status = HANDLED_STATUS;
         break;
     
     default:
-        status = IGNORED_STATUS;
+        status = super(&me->super.super, (StateHandler)&Imu_top);
         break;
     }
     return status;
 }
 
+State Imu_calibration(Imu * const me, Event const * const e)
+{
+    State status;
+    Event evt = { LAST_EVENT_FLAG, (void *)0 };
+    switch (e->sig)
+    {
+    case ENTRY_SIG:
+        evt.sig = EV_IMU_CALIBRATION_READY;
+        Active_post(AO_Broker, &evt);
+        status = HANDLED_STATUS;
+        break;
+
+    case EV_BUTTON_PRESSED:
+        status = transition(&me->super.super, (StateHandler)&Imu_cal_accel);
+        break;
+
+    case EV_BUTTON_DOUBLE_PRESS:
+        status = transition(&me->super.super, (StateHandler)&Imu_idle);
+        break;
+
+    case IMU_AXIS_CAL_DONE:
+        evt.sig = EV_IMU_CALIBRATION_DONE;
+        Active_post(AO_Broker, &evt);
+        me->calibrationSamplingInProgress = false;
+        status = HANDLED_STATUS;
+        break;
+
+    case EXIT_SIG:
+        status = HANDLED_STATUS;
+        break;
+    
+    default:
+        status = super(&me->super.super, (StateHandler)&Imu_top);
+        break;
+    }
+    return status;
+}
+
+State Imu_cal_accel(Imu * const me, Event const * const e)
+{
+    State status;
+    Event evt = { LAST_EVENT_FLAG, (void *)0 };
+    ImuData_t data;
+
+    switch (e->sig)
+    {
+    case ENTRY_SIG:
+        resetBufferAndSamples(me);
+        me->calibrationAxis = X_AXIS;
+        me->calibrationSensor = ACCEL;
+        TimeEvent_arm(&me->preCalibrationTimer);
+        status = HANDLED_STATUS;
+        break;
+
+    case IMU_PRE_CALIBRATION_TIMEOUT_SIG:
+        evt.sig = EV_IMU_CALIBRATION_IN_PROGRESS;
+        Active_post(AO_Broker, &evt);
+        TimeEvent_arm(&me->readTimer);
+        TimeEvent_arm(&me->calibrationTimer);
+        me->calibrationSamplingInProgress = true;
+        status = HANDLED_STATUS;
+        break; 
+
+    case IMU_READ_TIMEOUT_SIG:
+        imu_read_raw(&data);
+        updateBuffer(&data, &me->buffer, me->calibrationSensor, me->calibrationAxis);
+        me->samples++;
+        status = HANDLED_STATUS;
+        break;
+
+    case IMU_CALIBRATION_TIMEOUT_SIG:
+        TimeEvent_disarm(&me->readTimer);
+        evt.sig = IMU_AXIS_CAL_DONE;
+        Active_post(&me->super, &evt);
+        if(me->calibrationAxis != Z_AXIS){
+            me->calibrationAxis++;
+        } else {
+            me->calibrationAxis = NO_AXIS;
+        }
+        status = HANDLED_STATUS;
+        break;
+
+    case EV_BUTTON_PRESSED:
+        if(!me->calibrationSamplingInProgress && me->calibrationAxis != NO_AXIS){
+            TimeEvent_arm(&me->preCalibrationTimer);
+            resetBufferAndSamples(me);
+        }
+        status = HANDLED_STATUS;
+        break;
+
+    case EV_BUTTON_HOLD:
+        if(!me->calibrationSamplingInProgress){
+            status = transition(&me->super.super, (StateHandler)&Imu_idle);
+        }
+        status = HANDLED_STATUS;
+        break;
+
+    case EXIT_SIG:
+        calculateOffsets(&me->buffer, &me->calibrationOffsets, me->samples, me->calibrationSensor, me->calibrationAxis);
+        me->calibrationSensor = NO_SENSOR;
+        status = HANDLED_STATUS;
+        break;
+    
+    default:
+        status = super(&me->super.super, (StateHandler)&Imu_calibration);
+        break;
+    }
+    return status;
+}
 void Imu_ctor(Imu * const me)
 {
     Active_ctor(&me->super, (StateHandler)&Imu_init);
-    TimeEvent_ctor(&me->positionCalculationLoopTimer, "IMU timer", (TickType_t)(POSITION_CALCULATION_PERIOD/portTICK_PERIOD_MS), pdTRUE, CALCULATE_POSITION_TIMER_SIG, &me->super);
+    TimeEvent_ctor(&me->readTimer, "IMU read timer", (TickType_t)(READ_PERIOD/portTICK_PERIOD_MS), pdTRUE, IMU_READ_TIMEOUT_SIG, &me->super);
+    TimeEvent_ctor(&me->calibrationTimer, "IMU calibration timer", (TickType_t)(ACCEL_GYRO_CALIBRATION_PERIOD/portTICK_PERIOD_MS), pdFALSE, IMU_CALIBRATION_TIMEOUT_SIG, &me->super);
+    TimeEvent_ctor(&me->preCalibrationTimer, "IMU pre calibration timer", (TickType_t)(PRE_CALIBRATION_PERIOD/portTICK_PERIOD_MS), pdFALSE, IMU_PRE_CALIBRATION_TIMEOUT_SIG, &me->super);
     imu_configure(conf);
+
+    me->calibrationSamplingInProgress = false;
+    me->calibrationAxis = NO_AXIS;
+    me->calibrationSensor = NO_SENSOR;
+    resetBufferAndSamples(me);
 }
