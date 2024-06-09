@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "esp_ao.h"
 #include "events_broker.h"
+#include "nvs_helpers.h"
 #include "../imu_hal.h"
 
 #define READ_PERIOD 10 //calculation period in ms
@@ -17,7 +18,8 @@ typedef struct
     int16_t accelOffsets[ACCEL_NO_AXIS];
     AccelCalibrationAxis_t accelCalAxis;
     int16_t accelBias[NO_AXIS];
-    float accelScale[NO_AXIS];
+    int16_t accelScale[NO_AXIS];
+    bool completed;
 } CalibtrationData_t;
 
 typedef struct

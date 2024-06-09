@@ -31,6 +31,8 @@ State Imu_top(Imu * const me, Event const * const e)
     switch (e->sig)
     {
     case ENTRY_SIG:
+        //load offsets from nvs if they exist
+        get_accel_offsets(me->calibration.accelScale, me->calibration.accelBias);
         status = HANDLED_STATUS;
         break;
 
@@ -164,6 +166,10 @@ State Imu_calibration(Imu * const me, Event const * const e)
         break;
 
     case EXIT_SIG:
+        if(me->calibration.completed){
+            store_accel_offsets(me->calibration.accelScale, me->calibration.accelBias);
+            me->calibration.completed = false;
+        }
         me->calibration.sensor = NO_SENSOR;
         status = HANDLED_STATUS;
         break;
@@ -200,6 +206,7 @@ State Imu_cal_accel(Imu * const me, Event const * const e)
         //calculate the final bias from POS and NEG offsets
         if(me->calibration.accelCalAxis >= ACCEL_NO_AXIS){
             imu_calc_scale_and_bias(me->calibration.accelScale, me->calibration.accelBias, me->calibration.accelOffsets);
+            me->calibration.completed = true;
         }
         status = HANDLED_STATUS;
         break;
@@ -277,5 +284,6 @@ void Imu_ctor(Imu * const me)
 
     me->calibration.sensor = NO_SENSOR;
     me->calibration.accelCalAxis = ACCEL_NO_AXIS;
+    me->calibration.completed = false;
     // clearCalibrationOffsets(me);
 }

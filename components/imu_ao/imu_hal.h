@@ -13,6 +13,8 @@
 #define I2C_MASTER_RX_BUF_DISABLE   0                          /*!< I2C master doesn't need buffer */
 #define I2C_MASTER_TIMEOUT_MS       1000
 
+#define ACCEL_SCALE_FACTOR 1000
+
 typedef struct 
 {
     SampleDiv_t sampleDivSetting;
@@ -68,7 +70,7 @@ void imu_hal_init();
 void imu_log_data(ImuData_t data, SensorType_t sensor, bool convert);
 void imu_read(ImuData_t data);
 void imu_read_accel_axis(int16_t *data, AccelCalibrationAxis_t axis);
-void imu_calc_scale_and_bias(float scale[], int16_t bias[], int16_t accel_offsets[]);
-void imu_apply_accel_offsets(ImuData_t data, float scales[], int16_t bias[]);
+void imu_calc_scale_and_bias(int16_t scale[], int16_t bias[], int16_t accel_offsets[]);
+void imu_apply_accel_offsets(ImuData_t data, int16_t scales[], int16_t bias[]);
 
 #endif
