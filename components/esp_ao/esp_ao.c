@@ -6,31 +6,45 @@
 static Event const entryEvt = { ENTRY_SIG, (void*)0 };
 static Event const exitEvt = { EXIT_SIG, (void*)0 };
 
-static void collectParentStates(Hsm * const me, StateHandler state, uint8_t *parentIndex, StateHandler parents[]){
-    uint8_t index = 0;
+static void statesDifference(StateCollection_t *A, StateCollection_t *B, StateCollection_t *out){
+    uint8_t i, j;
+    out->length = 0;
+    for (i = 0; i < A->length; i++){
+        for(j = 0; j < B->length; j++){
+            if(A->states[i] == B->states[j])
+                break;
+        }
+        if(j == B->length){
+            out->states[out->length] = A->states[i];
+            out->length++;
+        }
+    }
+}
+
+static void addStateIfNeeded(StateHandler state, StateCollection_t *states){
+    for(uint8_t i = 0; i<states->length; i++){
+        if(states->states[i] == state){
+            return;
+        }
+    }
+    //State not found in the states array
+    states->states[states->length] = state;
+    states->length++;
+}
+
+static void collectStateHandlers(Hsm * const me, StateHandler state, StateCollection_t *states){
     State status;
+    states->length = 0;
+    states->states[states->length] = state;
+    states->length++;
     status = (*state)(me, &(Event){ DEFAULT_SIG, (void*)0 });
     while (status == SUPER_STATUS)
     {
-        parents[index] = me->parent;
-        index++;
+        states->states[states->length] = me->parent;
+        states->length++;
         status = (*me->parent)(me, &(Event){ DEFAULT_SIG, (void*)0 });
     }
-    *parentIndex = index;
     return;
-}
-
-void findCommonParentState(StateHandler currentParents[], StateHandler targetParents[], uint8_t *currentParentIndex, uint8_t *targetParentIndex)
-{
-    for (uint8_t i = 0; i<*currentParentIndex; i++){
-        for (uint8_t j = 0; j<*targetParentIndex; j++){
-            if(currentParents[i] == targetParents[j]){
-                *currentParentIndex = i;
-                *targetParentIndex = j;
-                return;
-            }
-        }
-    }
 }
 
 State Hsm_top(Hsm * const me, Event const * const e)
@@ -48,13 +62,11 @@ void Hsm_init(Hsm * const me, Event const * const e)
 {
     assert(me->state != (StateHandler)0);
     (*me->state)(me, e);
-    uint8_t entryParentsMaxIndex;
-    StateHandler entryParents[MAX_CHILDREN_STATES];
-    collectParentStates(me, me->state, &entryParentsMaxIndex, entryParents);
-    for (uint8_t i = 0; i<entryParentsMaxIndex; i++){
-        (*entryParents[i])(me, &entryEvt);
+    StateCollection_t entryStates;
+    collectStateHandlers(me, me->state, &entryStates);
+    for (uint8_t i = 0; i<entryStates.length; i++){
+        (*entryStates.states[i])(me, &entryEvt);
     }
-    (*me->state)(me, &entryEvt);
 }
 
 void Hsm_dispatch(Hsm * const me, Event const * const e)
@@ -72,22 +84,25 @@ void Hsm_dispatch(Hsm * const me, Event const * const e)
     if (status == TRAN_STATUS)
     {
         // collect the parent states
-        uint8_t prevParentsMaxIndex;
-        uint8_t targetParentsMaxIndex;
-        StateHandler prevParents[MAX_CHILDREN_STATES];
-        StateHandler targetParents[MAX_CHILDREN_STATES];
-        collectParentStates(me, prevState, &prevParentsMaxIndex, prevParents);
-        collectParentStates(me, me->state, &targetParentsMaxIndex, targetParents);
-        findCommonParentState(prevParents, targetParents, &prevParentsMaxIndex, &targetParentsMaxIndex);
+        StateCollection_t prevStates;
+        StateCollection_t targetStates;
+        StateCollection_t entryStates;
+        StateCollection_t exitStates;
+        collectStateHandlers(me, prevState, &prevStates);
+        collectStateHandlers(me, me->state, &targetStates);
+        // ExitStates
+        statesDifference(&prevStates, &targetStates, &exitStates);
+        addStateIfNeeded(prevState, &exitStates);
+        //EntryStates
+        statesDifference(&targetStates, &prevStates, &entryStates);
+        addStateIfNeeded(me->state, &entryStates);
 
-        (*prevState)(me, &exitEvt);
-        for (uint8_t i = 0; i<prevParentsMaxIndex; i++){
-            (*prevParents[i])(me, &exitEvt);
+        for (uint8_t i = 0; i<exitStates.length; i++){
+            (*exitStates.states[i])(me, &exitEvt);
         }
-        for (int8_t i = targetParentsMaxIndex-1; i>=0; i--){
-            (*targetParents[i])(me, &entryEvt);
+        for (int8_t i = entryStates.length-1; i >= 0; i--){
+            (*entryStates.states[i])(me, &entryEvt);
         }
-        status = (*me->state)(me, &entryEvt);
     }
 }
 

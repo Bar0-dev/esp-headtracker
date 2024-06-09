@@ -68,6 +68,12 @@ void Hsm_init(Hsm * const me, Event const * const e);
 void Hsm_dispatch(Hsm * const me, Event const * const e);
 State Hsm_top(Hsm * const me, Event const * const e);
 
+typedef struct
+{
+    uint8_t length;
+    StateHandler states[MAX_CHILDREN_STATES];
+} StateCollection_t;
+
 /**
  * Active object utils
 */
