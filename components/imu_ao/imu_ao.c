@@ -1,13 +1,13 @@
 #include "include/imu_ao.h"
 
-static void clearCalibrationOffsets(Imu * const me)
-{
-    for(uint8_t sensor = ACCEL; sensor<NO_SENSOR; sensor++){
-        for(uint8_t axis = X_AXIS; axis<NO_AXIS; axis++){
-            me->calibration.offsets[sensor][axis] = 0;
-        }
-    } 
-}
+// static void clearCalibrationOffsets(Imu * const me)
+// {
+//     for(uint8_t sensor = ACCEL; sensor<NO_SENSOR; sensor++){
+//         for(uint8_t axis = X_AXIS; axis<NO_AXIS; axis++){
+//             me->calibration.offsets[sensor][axis] = 0;
+//         }
+//     } 
+// }
 
 //Forward declarations
 State Imu_init(Imu * const me, Event const * const e);
@@ -80,6 +80,7 @@ State Imu_read(Imu * const me, Event const * const e)
 {
     State status;
     Event evt = { LAST_EVENT_FLAG, (void *)0 };
+    ImuData_t data;
     switch (e->sig)
     {
     case ENTRY_SIG:
@@ -94,8 +95,9 @@ State Imu_read(Imu * const me, Event const * const e)
         break;
 
     case IMU_READ_TIMEOUT_SIG:
-        imu_read(me->data);
-        imu_log_data(me->data, ACCEL);
+        imu_read(data);
+        imu_apply_accel_offsets(data, me->calibration.accelScale, me->calibration.accelBias);
+        imu_log_data(data, ACCEL, true);
         status = HANDLED_STATUS;
         break;
 
@@ -129,7 +131,7 @@ State Imu_calibration(Imu * const me, Event const * const e)
         //reset accel axis
         me->calibration.accelCalAxis = X_POS;
         //clear calibration offsets
-        clearCalibrationOffsets(me);
+        // clearCalibrationOffsets(me);
         ESP_LOGI("IMU_CALIBRATION", "Sensor: %d", me->calibration.sensor);
         status = HANDLED_STATUS;
         break;
@@ -195,6 +197,10 @@ State Imu_cal_accel(Imu * const me, Event const * const e)
         break;
 
     case EXIT_SIG:
+        //calculate the final bias from POS and NEG offsets
+        if(me->calibration.accelCalAxis >= ACCEL_NO_AXIS){
+            imu_calc_scale_and_bias(me->calibration.accelScale, me->calibration.accelBias, me->calibration.accelOffsets);
+        }
         status = HANDLED_STATUS;
         break;
     
@@ -271,5 +277,5 @@ void Imu_ctor(Imu * const me)
 
     me->calibration.sensor = NO_SENSOR;
     me->calibration.accelCalAxis = ACCEL_NO_AXIS;
-    clearCalibrationOffsets(me);
+    // clearCalibrationOffsets(me);
 }

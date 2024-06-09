@@ -65,8 +65,10 @@ typedef enum
 typedef int16_t ImuData_t[NO_SENSOR][NO_AXIS];
 
 void imu_hal_init();
-void imu_log_data(ImuData_t data, SensorType_t sensor);
+void imu_log_data(ImuData_t data, SensorType_t sensor, bool convert);
 void imu_read(ImuData_t data);
 void imu_read_accel_axis(int16_t *data, AccelCalibrationAxis_t axis);
+void imu_calc_scale_and_bias(float scale[], int16_t bias[], int16_t accel_offsets[]);
+void imu_apply_accel_offsets(ImuData_t data, float scales[], int16_t bias[]);
 
 #endif

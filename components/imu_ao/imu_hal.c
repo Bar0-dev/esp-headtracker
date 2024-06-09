@@ -146,7 +146,6 @@ static void convert_raw(ImuData_t raw, float data[NO_AXIS], SensorType_t sensor)
         break;
     
     default:
-        range = 0;
         assert(0);
         break;
     }
@@ -158,11 +157,15 @@ static void convert_raw(ImuData_t raw, float data[NO_AXIS], SensorType_t sensor)
 }
 //SLOW
 
-void imu_log_data(ImuData_t data, SensorType_t sensor)
+void imu_log_data(ImuData_t data, SensorType_t sensor, bool convert)
 {
     float data_to_show[NO_AXIS];
-    convert_raw(data, data_to_show, sensor);
-    ESP_LOGI("IMU", "X: %.2f, Y: %.2f, Z: %.2f", data_to_show[0], data_to_show[1], data_to_show[2]);
+    if(convert){
+        convert_raw(data, data_to_show, sensor);
+        ESP_LOGI("IMU", "X: %.2f, Y: %.2f, Z: %.2f", data_to_show[0], data_to_show[1], data_to_show[2]);
+    } else {
+        ESP_LOGI("IMU", "X: %d, Y: %d, Z: %d", data[sensor][0], data[sensor][1], data[sensor][2]);
+    }
 }
 
 static void mag_read(ImuData_t data)
@@ -219,6 +222,30 @@ void imu_read_accel_axis(int16_t *data, AccelCalibrationAxis_t axis)
     return;
 }
 
-void imu_apply_offsets(int16_t values[NO_AXIS*NO_SENSOR], SensorType_t){
+void imu_calc_scale_and_bias(float scale[], int16_t bias[], int16_t accel_offsets[]){
+    uint8_t range = accelRange[imu_conf.accelRangeSetting];
+    int16_t ymax = INT16_MAX/range;
+    int16_t pos_offset;
+    int16_t neg_offset;
 
+    for (int8_t axis = X_AXIS; axis<NO_AXIS; axis++){
+        int16_t a = accel_offsets[axis<<1];
+        int16_t b = accel_offsets[(axis<<1)+1];
+        pos_offset = (a > b) ? a : b;
+        neg_offset = (a < b) ? a : b;
+        if((pos_offset-neg_offset)!=0){
+            scale[axis] = 2.0*ymax/(pos_offset-neg_offset);
+            bias[axis] = -ymax*(pos_offset+neg_offset)/(pos_offset-neg_offset);
+        }
+        ESP_LOGI("IMU-HAL", "axis: %d, scale:%f, bias:%d", axis, scale[axis], bias[axis]);
+    }
+}
+
+void imu_apply_accel_offsets(ImuData_t data, float scales[], int16_t bias[]){
+    SensorType_t sensor = ACCEL;
+    for(uint8_t axis = X_AXIS; axis<NO_AXIS; axis++){
+        // ESP_LOGI("IMU-HAL", "sensor %d, axis %d, scale %.2f bias: %d, data: %d", sensor, axis, scales[axis], bias[axis], data[sensor][axis]);
+        data[sensor][axis] = (int16_t)(scales[axis]*data[sensor][axis]) + bias[axis];
+        // ESP_LOGI("IMU-HAL", "data: %d", data[sensor][axis]);
+    }
 }

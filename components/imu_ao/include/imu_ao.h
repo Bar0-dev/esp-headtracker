@@ -8,22 +8,21 @@
 
 #define READ_PERIOD 10 //calculation period in ms
 #define PRE_CALIBRATION_PERIOD 1*1000 //calculation period in ms (x*1000[ms] = x[s])
-#define ACCEL_GYRO_CALIBRATION_PERIOD 3*1000 //calculation period in ms (x*1000[ms] = x[s])
+#define ACCEL_GYRO_CALIBRATION_PERIOD 1*1000 //calculation period in ms (x*1000[ms] = x[s])
 #define MAG_CALIBRATION_PERIOD 10*1000 //calculation period in ms (x*1000[ms] = x[s])
 
 typedef struct 
 {
     SensorType_t sensor;
-    uint16_t samples;
     int16_t accelOffsets[ACCEL_NO_AXIS];
     AccelCalibrationAxis_t accelCalAxis;
-    ImuData_t offsets;
+    int16_t accelBias[NO_AXIS];
+    float accelScale[NO_AXIS];
 } CalibtrationData_t;
 
 typedef struct
 {
     Active super;
-    ImuData_t data;
     CalibtrationData_t calibration;
     TimeEvent readTimer;
     TimeEvent calibrationTimer;

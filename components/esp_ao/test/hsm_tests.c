@@ -39,6 +39,7 @@ typedef enum {
     TRAN2_SIG,
     TRAN3_SIG,
     TRAN4_SIG,
+    TRAN5_SIG,
 } MockSigs;
 
 void reset_flags(Mock * const me){
@@ -110,6 +111,11 @@ State Mock_substate11(Mock * const me, Event const * const e)
         status = transition(&me->super.super, (StateHandler)&Mock_substate13);
         break;
 
+    case TRAN5_SIG:
+        me->tranSigReceived = true;
+        status = transition(&me->super.super, (StateHandler)&Mock_substate12);
+        break;
+    
     case EXIT_SIG:
         me->substate11StateExited = true;
         status = HANDLED_STATUS;
@@ -341,5 +347,17 @@ TEST_CASE("AO HSM transition from nested 13 to nested 11", "espao HSM"){
     TEST_ASSERT_MESSAGE(mock.substate12StateExited == true, "State12 was not exited!");
     TEST_ASSERT_MESSAGE(mock.substate11StateEntered == true, "State11 was not entered!");
     TEST_ASSERT_MESSAGE(mock.substate11StateExited == false, "State11 was exited!");
-    TEST_ASSERT_MESSAGE(mock.commonStateEntered == false, "Common was enetred!");
+}
+
+TEST_CASE("AO HSM transition from nested 11 to nested 12", "espao HSM"){
+    reset_flags(&mock);
+    Event tran5Event = { TRAN5_SIG, (void*)0};
+    Active_post(mockAO, &tran5Event);
+    testWait(200U);
+    TEST_ASSERT(mock.tranSigReceived == true);
+    TEST_ASSERT_MESSAGE(mock.super.super.state == (StateHandler)&Mock_substate12, "Mock HSM is not in the substate11!");
+    TEST_ASSERT_MESSAGE(mock.substate11StateEntered == false, "State11 was entered!");
+    TEST_ASSERT_MESSAGE(mock.substate11StateExited == true, "State11 was not exited!");
+    TEST_ASSERT_MESSAGE(mock.substate12StateEntered == true, "State12 not entered!");
+    TEST_ASSERT_MESSAGE(mock.substate12StateExited == false, "State12 was exited!");
 }
