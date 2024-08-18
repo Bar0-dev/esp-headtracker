@@ -6,6 +6,7 @@
 #include "events_broker.h"
 #include "imu_ao.h"
 #include "coms_ao.h"
+#include "controller_ao.h"
 
 static Broker broker;
 Active *AO_Broker = &broker.super;
@@ -17,6 +18,8 @@ static Imu imu;
 Active *AO_Imu = &imu.super;
 static Coms coms;
 Active *AO_Coms = &coms.super;
+static Controller controller;
+Active *AO_Controller = &controller.super;
 
 void app_main(void)
 {
@@ -35,13 +38,15 @@ void app_main(void)
     Coms_ctor(&coms);
     Active_start(AO_Coms, "Coms thread", 4096, 19, tskNO_AFFINITY, 10);
 
+    Controller_ctor(&controller);
+    Active_start(AO_Controller, "Controller thread", 4096, 3, tskNO_AFFINITY, 10);
     /**
      * Subscriptions
     */
-    Broker_subscribe(&broker, &(Event){ EV_BUTTON_PRESSED , (void*)0 }, AO_Imu);
-    Broker_subscribe(&broker, &(Event){ EV_BUTTON_RELEASED , (void*)0 }, AO_Imu);
-    Broker_subscribe(&broker, &(Event){ EV_BUTTON_HOLD , (void*)0 }, AO_Imu);
-    Broker_subscribe(&broker, &(Event){ EV_BUTTON_DOUBLE_PRESS , (void*)0 }, AO_Imu);
+    Broker_subscribe(&broker, &(Event){ EV_BUTTON_PRESSED , (void*)0 }, AO_Controller);
+    Broker_subscribe(&broker, &(Event){ EV_BUTTON_RELEASED , (void*)0 }, AO_Controller);
+    Broker_subscribe(&broker, &(Event){ EV_BUTTON_HOLD , (void*)0 }, AO_Controller);
+    Broker_subscribe(&broker, &(Event){ EV_BUTTON_DOUBLE_PRESS , (void*)0 }, AO_Controller);
     Broker_subscribe(&broker, &(Event){ EV_IMU_IDLE , (void*)0 }, AO_Led);
     Broker_subscribe(&broker, &(Event){ EV_IMU_READING , (void*)0 }, AO_Led);
     Broker_subscribe(&broker, &(Event){ EV_IMU_CALIBRATION_READY , (void*)0 }, AO_Led);

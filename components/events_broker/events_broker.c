@@ -3,9 +3,6 @@
 
 State Broker_publish(Broker * const me, Event const * const e)
 {
-    //DEBUG
-    ESP_LOGI("BROKER", "SIG: %d", e->sig);
-    //DEBUG
     if(e->sig >= USER_SIG){
         uint8_t evtId = e->sig-USER_SIG;
         GlobalEvent_t *globalEvent = &me->globalEvents[evtId];
