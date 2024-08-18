@@ -5,6 +5,7 @@
 #include "button_ao.h"
 #include "events_broker.h"
 #include "imu_ao.h"
+#include "coms_ao.h"
 
 static Broker broker;
 Active *AO_Broker = &broker.super;
@@ -14,6 +15,8 @@ static Button button;
 Active *AO_Button = &button.super;
 static Imu imu;
 Active *AO_Imu = &imu.super;
+static Coms coms;
+Active *AO_Coms = &coms.super;
 
 void app_main(void)
 {
@@ -28,6 +31,9 @@ void app_main(void)
 
     Imu_ctor(&imu);
     Active_start(AO_Imu, "Imu thread", 4096, 2, tskNO_AFFINITY, 10);
+
+    Coms_ctor(&coms);
+    Active_start(AO_Coms, "Coms thread", 4096, 19, tskNO_AFFINITY, 10);
 
     /**
      * Subscriptions
