@@ -16,10 +16,16 @@ State Coms_idle(Coms * const me, Event const * const e)
     switch (e->sig)
     {
     case ENTRY_SIG:
+        status = HANDLED_STATUS;
+        break;
+
+    case EV_CONTROLLER_CONNECT_DEVICE:
         prov_mgr_init();
+        status = HANDLED_STATUS;
         break;
 
     case EXIT_SIG:
+        status = HANDLED_STATUS;
         break;
     
     default:

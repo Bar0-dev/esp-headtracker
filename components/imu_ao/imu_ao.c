@@ -9,6 +9,19 @@
 //     } 
 // }
 
+// TODO: Move this to hal
+typedef char axisString_t[20];
+
+axisString_t accelAxisNames[] = {
+    "X_POS",
+    "X_NEG",
+    "Y_POS",
+    "Y_NEG",
+    "Z_POS",
+    "Z_NEG",
+    "ACCEL_NO_AXIS",
+};
+
 //Forward declarations
 State Imu_init(Imu * const me, Event const * const e);
 State Imu_top(Imu * const me, Event const * const e);
@@ -36,6 +49,36 @@ State Imu_top(Imu * const me, Event const * const e)
         status = HANDLED_STATUS;
         break;
 
+    case EV_CONTROLLER_START_READING_IMU:
+        status = transition(&me->super.super, (StateHandler)&Imu_read);
+        break;
+
+    case EV_CONTROLLER_START_CALIBRATION_IMU:
+        status = transition(&me->super.super, (StateHandler)&Imu_calibration);
+        break;
+
+    case EV_CONTROLLER_STOP_READING_IMU:
+        status = transition(&me->super.super, (StateHandler)&Imu_idle);
+        break;
+
+    case EV_CONTROLLER_CALIBRATE_ACCEL:
+        status = transition(&me->super.super, (StateHandler)&Imu_cal_accel);
+        break;
+
+    case EV_CONTROLLER_CALIBRATE_GYRO:
+        // status = transition(&me->super.super, (StateHandler)&Imu_cal_gyro);
+        status = HANDLED_STATUS;
+        break;
+
+    case EV_CONTROLLER_CALIBRATE_MAG:
+        // status = transition(&me->super.super, (StateHandler)&Imu_cal_mag);
+        status = HANDLED_STATUS;
+        break;
+
+    case EV_CONTROLLER_STOP_CALIBRATION_IMU:
+        status = transition(&me->super.super, (StateHandler)&Imu_idle);
+        break;
+
     case EXIT_SIG:
         status = HANDLED_STATUS;
         break;
@@ -57,14 +100,6 @@ State Imu_idle(Imu * const me, Event const * const e)
         evt.sig = EV_IMU_IDLE;
         Active_post(AO_Broker, &evt);
         status = HANDLED_STATUS;
-        break;
-
-    case EV_CONTROLLER_START_READING_IMU:
-        status = transition(&me->super.super, (StateHandler)&Imu_read);
-        break;
-
-    case EV_CONTROLLER_START_CALIBRATION_IMU:
-        status = transition(&me->super.super, (StateHandler)&Imu_calibration);
         break;
 
     case EXIT_SIG:
@@ -92,10 +127,6 @@ State Imu_read(Imu * const me, Event const * const e)
         status = HANDLED_STATUS;
         break;
 
-    case EV_CONTROLLER_STOP_READING_IMU:
-        status = transition(&me->super.super, (StateHandler)&Imu_idle);
-        break;
-
     case IMU_READ_TIMEOUT_SIG:
         imu_read(data);
         imu_apply_accel_offsets(data, me->calibration.accelScale, me->calibration.accelBias);
@@ -118,48 +149,19 @@ State Imu_read(Imu * const me, Event const * const e)
 State Imu_calibration(Imu * const me, Event const * const e)
 {
     State status;
-    Event evt = { LAST_EVENT_FLAG, (void *)0 };
+    // Event evt = { LAST_EVENT_FLAG, (void *)0 };
     switch (e->sig)
     {
     case ENTRY_SIG:
-        // //controll the calibrated sensor
-        // if(me->calibration.sensor < NO_SENSOR){
-        //     me->calibration.sensor++;
-        // } else {
-        //     me->calibration.sensor = ACCEL;
-        // }
-        // //reset accel axis
-        // me->calibration.accelCalAxis = X_POS;
-        // //clear calibration offsets
-        // // clearCalibrationOffsets(me);
-        // ESP_LOGI("IMU_CALIBRATION", "Sensor: %d", me->calibration.sensor);
+        ESP_LOGI("CALIBRATION", "Entered");
         status = HANDLED_STATUS;
         break;
-
-    case EV_CONTROLLER_CALIBRATE_ACCEL:
-        status = transition(&me->super.super, (StateHandler)&Imu_cal_accel);
-        break;
-
-    case EV_CONTROLLER_CALIBRATE_GYRO:
-        // status = transition(&me->super.super, (StateHandler)&Imu_cal_gyro);
-        status = HANDLED_STATUS;
-        break;
-
-    case EV_CONTROLLER_CALIBRATE_MAG:
-        // status = transition(&me->super.super, (StateHandler)&Imu_cal_mag);
-        status = HANDLED_STATUS;
-        break;
-
-    case EV_CONTROLLER_STOP_CALIBRATION_IMU:
-        status = transition(&me->super.super, (StateHandler)&Imu_idle);
-        break;
-
+    
     case EXIT_SIG:
         if(me->calibration.completed){
             store_accel_offsets(me->calibration.accelScale, me->calibration.accelBias);
             me->calibration.completed = false;
         }
-        me->calibration.sensor = NO_SENSOR;
         status = HANDLED_STATUS;
         break;
     
@@ -173,50 +175,22 @@ State Imu_calibration(Imu * const me, Event const * const e)
 State Imu_cal_accel(Imu * const me, Event const * const e)
 {
     State status;
+    Event evt = { LAST_EVENT_FLAG, (void *)0 };
+
+    int16_t buffer = 0;
+    static int32_t sum = 0;
+    static uint16_t samples = 0;
+
     switch (e->sig)
     {
     case ENTRY_SIG:
-        ESP_LOGI("IMU_CALIBRATION", "Accelerometer calibration accelCalAxis: %d", me->calibration.accelCalAxis);
-        status = HANDLED_STATUS;
-        break;
-
-    case EV_BUTTON_PRESSED:
-        if(me->calibration.accelCalAxis < ACCEL_NO_AXIS){
-            TimeEvent_arm(&me->preCalibrationTimer);
-        }
+        ESP_LOGI("IMU_CALIBRATION", "Accelerometer calibration on axis: %s starts in: %dms", accelAxisNames[me->calibration.accelCalAxis], PRE_CALIBRATION_PERIOD);
+        TimeEvent_arm(&me->preCalibrationTimer);
+        me->calibration.accelCalAxis = ACCEL_NO_AXIS;
         status = HANDLED_STATUS;
         break;
 
     case IMU_PRE_CALIBRATION_TIMEOUT_SIG:
-        status = transition(&me->super.super, (StateHandler)&Imu_cal_axis_accel);
-        break;
-
-    case EXIT_SIG:
-        //calculate the final bias from POS and NEG offsets
-        if(me->calibration.accelCalAxis >= ACCEL_NO_AXIS){
-            imu_calc_scale_and_bias(me->calibration.accelScale, me->calibration.accelBias, me->calibration.accelOffsets);
-            me->calibration.completed = true;
-        }
-        status = HANDLED_STATUS;
-        break;
-    
-    default:
-        status = super(&me->super.super, (StateHandler)&Imu_calibration);
-        break;
-    }
-    return status;
-}
-
-State Imu_cal_axis_accel(Imu * const me, Event const * const e)
-{
-    State status;
-    Event evt = { LAST_EVENT_FLAG, (void *)0 };
-    int16_t buffer = 0;
-    static int32_t sum = 0;
-    static uint16_t samples = 0;
-    switch (e->sig)
-    {
-    case ENTRY_SIG:
         evt.sig = EV_IMU_CALIBRATION_IN_PROGRESS;
         Active_post(AO_Broker, &evt);
         sum = 0;
@@ -235,29 +209,35 @@ State Imu_cal_axis_accel(Imu * const me, Event const * const e)
         break;
 
     case IMU_CALIBRATION_TIMEOUT_SIG:
+        TimeEvent_disarm(&me->readTimer);
         me->calibration.accelOffsets[me->calibration.accelCalAxis] = sum/samples;
-        status = transition(&me->super.super, (StateHandler)&Imu_cal_accel);
+        me->calibration.accelCalAxis++;
+        if(me->calibration.accelCalAxis >= ACCEL_NO_AXIS){
+            ESP_LOGI("IMU_CALIBRATION", "Accelerometer calibration finished");
+            evt.sig = EV_IMU_CALIBRATION_DONE;
+            Active_post(AO_Broker, &evt);
+            status = transition(&me->super.super, (StateHandler)&Imu_calibration);
+        } else {
+            ESP_LOGI("IMU_CALIBRATION", "Accelerometer calibration on axis: %s starts in: %dms", accelAxisNames[me->calibration.accelCalAxis], PRE_CALIBRATION_PERIOD);
+            TimeEvent_arm(&me->preCalibrationTimer);
+            status = HANDLED_STATUS;
+        }
         break;
     
-    case EV_BUTTON_PRESSED:
-        //handle this event to block bubbling while sampling
-        status = HANDLED_STATUS;
-        break;
-
     case EXIT_SIG:
         TimeEvent_disarm(&me->readTimer);
-        TimeEvent_disarm(&me->calibrationTimer); //only disarm if calibration was aborted by holding the button
-        evt.sig = EV_IMU_CALIBRATION_DONE;
-        Active_post(AO_Broker, &evt);
-        ESP_LOGI("IMU_CALIBRATION", "Accelerometer offset: %d, for sequence: %d", me->calibration.accelOffsets[me->calibration.accelCalAxis], me->calibration.accelCalAxis);
-        if(me->calibration.accelCalAxis < ACCEL_NO_AXIS){
-            me->calibration.accelCalAxis++;
+        TimeEvent_disarm(&me->calibrationTimer);
+        TimeEvent_disarm(&me->preCalibrationTimer);
+        //calculate the final bias from POS and NEG offsets
+        if(me->calibration.accelCalAxis >= ACCEL_NO_AXIS){
+            imu_calc_scale_and_bias(me->calibration.accelScale, me->calibration.accelBias, me->calibration.accelOffsets);
+            me->calibration.completed = true;
         }
         status = HANDLED_STATUS;
         break;
     
     default:
-        status = super(&me->super.super, (StateHandler)&Imu_cal_accel);
+        status = super(&me->super.super, (StateHandler)&Imu_calibration);
         break;
     }
     return status;
@@ -271,7 +251,6 @@ void Imu_ctor(Imu * const me)
     TimeEvent_ctor(&me->preCalibrationTimer, "IMU pre calibration timer", (TickType_t)(PRE_CALIBRATION_PERIOD/portTICK_PERIOD_MS), pdFALSE, IMU_PRE_CALIBRATION_TIMEOUT_SIG, &me->super);
     imu_hal_init();
 
-    me->calibration.sensor = NO_SENSOR;
     me->calibration.accelCalAxis = ACCEL_NO_AXIS;
     me->calibration.completed = false;
     // clearCalibrationOffsets(me);

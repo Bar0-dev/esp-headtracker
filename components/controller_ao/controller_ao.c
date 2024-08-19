@@ -1,113 +1,11 @@
-#include "controller_ao.h"
+#include "controller_ao_priv.h"
+#include "controller_menus.h"
 
-//Forward declarations
-State Controller_top(Controller * const me, Event const * const e);
-State Controller_main(Controller * const me, Event const * const e);
-State Controller_init(Controller * const me, Event const * const e);
-State Controller_tracking(Controller * const me, Event const * const e);
-State Controller_calibration(Controller * const me, Event const * const e);
-State Controller_connection(Controller * const me, Event const * const e);
-
-static menu_t mainMenu;
-static menu_t trackingMenu;
-static menu_t calibrationMenu;
-static menu_t connectionMenu;
-
-static menu_t mainMenu = {
-    .optionsCount = 3,
-    .currentSelect = 0,
-    .options = {
-        {
-            .name = "TRACKING",
-            .menu = &trackingMenu,
-            .state = (StateHandler)&Controller_tracking,
-        },
-        {
-            .name = "CALIBRATION",
-            .menu = &calibrationMenu,
-            .state = (StateHandler)&Controller_calibration,
-        },
-        {
-            .name = "CONNECTION",
-            .menu = &connectionMenu,
-            .state = (StateHandler)&Controller_connection,
-        },
-    },
-    .originState = (StateHandler)&Controller_main,
-    .parentMenu = (menu_t *)NULL,
-};
-
-static menu_t trackingMenu = {
-    .optionsCount = 1,
-    .currentSelect = 0,
-    .options = {
-        {
-            .name = "START",
-            .menu = &trackingMenu,
-            .state = (StateHandler)&Controller_tracking,
-            .evt = { .sig = EV_CONTROLLER_START_READING_IMU}
-        },
-        {
-            .name = "STOP",
-            .menu = &trackingMenu,
-            .state = (StateHandler)&Controller_tracking,
-            .evt = { .sig = EV_CONTROLLER_STOP_READING_IMU}
-        },
-    },
-    .originState = (StateHandler)&Controller_tracking,
-    .parentMenu = &mainMenu,
-};
-
-static menu_t calibrationMenu = {
-    .optionsCount = 3,
-    .currentSelect = 0,
-    .options = {
-        {
-            .name = "ACCEL",
-            .menu = &mainMenu,
-            .state = (StateHandler)&Controller_main,
-            .evt = { .sig = EV_CONTROLLER_CALIBRATE_ACCEL}
-        },
-        {
-            .name = "MAG",
-            .menu = &mainMenu,
-            .state = (StateHandler)&Controller_main,
-            .evt = { .sig = EV_CONTROLLER_CALIBRATE_MAG}
-        },
-        {
-            .name = "GYRO",
-            .menu = &mainMenu,
-            .state = (StateHandler)&Controller_main,
-            .evt = { .sig = EV_CONTROLLER_CALIBRATE_GYRO}
-        },
-    },
-    .originState = (StateHandler)&Controller_calibration,
-    .parentMenu = &mainMenu,
-};
-
-static menu_t connectionMenu = {
-    .optionsCount = 2,
-    .currentSelect = 0,
-    .options = {
-        {
-            .name = "CONNECT",
-            .menu = &mainMenu,
-            .state = (StateHandler)&Controller_main,
-        },
-        {
-            .name = "DISCONNECT",
-            .menu = &mainMenu,
-            .state = (StateHandler)&Controller_main,
-        },
-    },
-    .originState = (StateHandler)&Controller_connection,
-    .parentMenu = &mainMenu,
-};
-
-static const char *TAG = "CONTROLLER";
+static const char *TAG = "MENU";
 
 static void displayMenu(menu_t const * const menu)
 {
+    printf("\n\n");
     for (int i = 0; i<menu->optionsCount; i++){
         if(i == menu->currentSelect){
             ESP_LOGI(TAG, "-> %s\n", menu->options[i].name);
@@ -135,7 +33,7 @@ State Controller_top(Controller * const me, Event const * const e)
         status = HANDLED_STATUS;
         break;
     
-    case EV_BUTTON_PRESSED:
+    case EV_BUTTON_RELEASED:
         incrementSelect(me->menu);
         displayMenu(me->menu);
         evt.sig = CONTROLLER_SELECT_SIG;
@@ -144,10 +42,15 @@ State Controller_top(Controller * const me, Event const * const e)
         break;
     
     case EV_BUTTON_HOLD:
-        evt.sig = CONTROLLER_ENTER_SIG;
-        Active_post(&me->super, &evt);
-        me->menu = me->menu->options[me->menu->currentSelect].menu;
-        status = transition(&me->super.super, me->menu->options[me->menu->currentSelect].state);
+        option_t * option = &me->menu->options[me->menu->currentSelect];
+        if(option->state != (StateHandler) NULL){
+            me->menu = me->menu->options[me->menu->currentSelect].menu;
+            status = transition(&me->super.super, option->state);
+        } else {
+            evt.sig = CONTROLLER_ENTER_SIG;
+            Active_post(&me->super, &evt);
+            status = HANDLED_STATUS;
+        }
         break;
     
     case EV_BUTTON_DOUBLE_PRESS:
@@ -247,7 +150,7 @@ State Controller_tracking(Controller * const me, Event const * const e)
 State Controller_calibration(Controller * const me, Event const * const e)
 {
     State status;
-    // Event evt = { LAST_EVENT_FLAG, (void *)0};
+    Event evt = { LAST_EVENT_FLAG, (void *)0};
     switch (e->sig)
     {
     case ENTRY_SIG:
@@ -256,11 +159,11 @@ State Controller_calibration(Controller * const me, Event const * const e)
         break;
     
     case CONTROLLER_SELECT_SIG:
-        Active_post(AO_Broker, &me->menu->options[me->menu->currentSelect].evt);
         status = HANDLED_STATUS;
         break;
     
     case CONTROLLER_ENTER_SIG:
+        Active_post(AO_Broker, &me->menu->options[me->menu->currentSelect].evt);
         status = HANDLED_STATUS;
         break;
     
@@ -268,7 +171,13 @@ State Controller_calibration(Controller * const me, Event const * const e)
         status = HANDLED_STATUS;
         break;
     
+    case EV_IMU_CALIBRATION_DONE:
+        status = HANDLED_STATUS;
+        break;
+    
     case EXIT_SIG:
+        evt.sig = EV_CONTROLLER_STOP_CALIBRATION_IMU;
+        Active_post(AO_Broker, &evt);
         status = HANDLED_STATUS;
         break;
     
@@ -295,6 +204,7 @@ State Controller_connection(Controller * const me, Event const * const e)
         break;
     
     case CONTROLLER_ENTER_SIG:
+        Active_post(AO_Broker, &me->menu->options[me->menu->currentSelect].evt);
         status = HANDLED_STATUS;
         break;
     

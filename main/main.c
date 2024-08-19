@@ -51,9 +51,13 @@ void app_main(void)
     Broker_subscribe(&broker, &(Event){ EV_CONTROLLER_STOP_READING_IMU , (void*)0 }, AO_Imu);
     Broker_subscribe(&broker, &(Event){ EV_CONTROLLER_START_CALIBRATION_IMU, (void*)0 }, AO_Imu);
     Broker_subscribe(&broker, &(Event){ EV_CONTROLLER_STOP_CALIBRATION_IMU, (void*)0 }, AO_Imu);
+    Broker_subscribe(&broker, &(Event){ EV_CONTROLLER_CALIBRATE_ACCEL, (void*)0 }, AO_Imu);
+    Broker_subscribe(&broker, &(Event){ EV_CONTROLLER_CALIBRATE_MAG, (void*)0 }, AO_Imu);
+    Broker_subscribe(&broker, &(Event){ EV_CONTROLLER_CALIBRATE_GYRO, (void*)0 }, AO_Imu);
+    Broker_subscribe(&broker, &(Event){ EV_CONTROLLER_CONNECT_DEVICE, (void*)0 }, AO_Coms);
     // Broker_subscribe(&broker, &(Event){ EV_IMU_IDLE , (void*)0 }, AO_Led);
     // Broker_subscribe(&broker, &(Event){ EV_IMU_READING , (void*)0 }, AO_Led);
     // Broker_subscribe(&broker, &(Event){ EV_IMU_CALIBRATION_READY , (void*)0 }, AO_Led);
     // Broker_subscribe(&broker, &(Event){ EV_IMU_CALIBRATION_IN_PROGRESS , (void*)0 }, AO_Led);
-    // Broker_subscribe(&broker, &(Event){ EV_IMU_CALIBRATION_DONE , (void*)0 }, AO_Led);
+    Broker_subscribe(&broker, &(Event){ EV_IMU_CALIBRATION_DONE , (void*)0 }, AO_Controller);
 }

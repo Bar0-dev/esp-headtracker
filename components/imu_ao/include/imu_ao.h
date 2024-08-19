@@ -8,13 +8,12 @@
 #include "../imu_hal.h"
 
 #define READ_PERIOD 10 //calculation period in ms
-#define PRE_CALIBRATION_PERIOD 1*1000 //calculation period in ms (x*1000[ms] = x[s])
+#define PRE_CALIBRATION_PERIOD 5*1000 //calculation period in ms (x*1000[ms] = x[s])
 #define ACCEL_GYRO_CALIBRATION_PERIOD 1*1000 //calculation period in ms (x*1000[ms] = x[s])
 #define MAG_CALIBRATION_PERIOD 10*1000 //calculation period in ms (x*1000[ms] = x[s])
 
 typedef struct 
 {
-    SensorType_t sensor;
     int16_t accelOffsets[ACCEL_NO_AXIS];
     AccelCalibrationAxis_t accelCalAxis;
     int16_t accelBias[NO_AXIS];
