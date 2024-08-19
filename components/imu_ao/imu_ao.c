@@ -149,7 +149,6 @@ State Imu_read(Imu * const me, Event const * const e)
 State Imu_calibration(Imu * const me, Event const * const e)
 {
     State status;
-    // Event evt = { LAST_EVENT_FLAG, (void *)0 };
     switch (e->sig)
     {
     case ENTRY_SIG:
@@ -184,9 +183,9 @@ State Imu_cal_accel(Imu * const me, Event const * const e)
     switch (e->sig)
     {
     case ENTRY_SIG:
-        ESP_LOGI("IMU_CALIBRATION", "Accelerometer calibration on axis: %s starts in: %dms", accelAxisNames[me->calibration.accelCalAxis], PRE_CALIBRATION_PERIOD);
         TimeEvent_arm(&me->preCalibrationTimer);
-        me->calibration.accelCalAxis = ACCEL_NO_AXIS;
+        me->calibration.accelCalAxis = X_POS;
+        ESP_LOGI("IMU_CALIBRATION", "Accelerometer calibration on axis: %s starts in: %dms", accelAxisNames[me->calibration.accelCalAxis], PRE_CALIBRATION_PERIOD);
         status = HANDLED_STATUS;
         break;
 
