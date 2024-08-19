@@ -22,6 +22,7 @@ typedef struct
     char name[MAX_OPTION_SIZE];
     StateHandler state;
     menu_t * menu;
+    Event evt;
 } option_t ;
 
 typedef uint8_t selection_t;
@@ -43,5 +44,10 @@ typedef struct
 
 
 void Controller_ctor(Controller * const me);
+
+/**
+ * Active objects
+*/
+extern Active *AO_Broker;
 
 #endif

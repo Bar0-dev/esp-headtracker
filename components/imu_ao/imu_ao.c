@@ -36,14 +36,6 @@ State Imu_top(Imu * const me, Event const * const e)
         status = HANDLED_STATUS;
         break;
 
-    case EV_BUTTON_PRESSED:
-        status = transition(&me->super.super, (StateHandler)&Imu_read);
-        break;
-
-    case EV_BUTTON_HOLD:
-        status = transition(&me->super.super, (StateHandler)&Imu_calibration);
-        break;
-
     case EXIT_SIG:
         status = HANDLED_STATUS;
         break;
@@ -65,6 +57,14 @@ State Imu_idle(Imu * const me, Event const * const e)
         evt.sig = EV_IMU_IDLE;
         Active_post(AO_Broker, &evt);
         status = HANDLED_STATUS;
+        break;
+
+    case EV_CONTROLLER_START_READING_IMU:
+        status = transition(&me->super.super, (StateHandler)&Imu_read);
+        break;
+
+    case EV_CONTROLLER_START_CALIBRATION_IMU:
+        status = transition(&me->super.super, (StateHandler)&Imu_calibration);
         break;
 
     case EXIT_SIG:
@@ -92,7 +92,7 @@ State Imu_read(Imu * const me, Event const * const e)
         status = HANDLED_STATUS;
         break;
 
-    case EV_BUTTON_PRESSED:
+    case EV_CONTROLLER_STOP_READING_IMU:
         status = transition(&me->super.super, (StateHandler)&Imu_idle);
         break;
 
@@ -122,46 +122,35 @@ State Imu_calibration(Imu * const me, Event const * const e)
     switch (e->sig)
     {
     case ENTRY_SIG:
-        evt.sig = EV_IMU_CALIBRATION_READY;
-        Active_post(AO_Broker, &evt);
-        //controll the calibrated sensor
-        if(me->calibration.sensor < NO_SENSOR){
-            me->calibration.sensor++;
-        } else {
-            me->calibration.sensor = ACCEL;
-        }
-        //reset accel axis
-        me->calibration.accelCalAxis = X_POS;
-        //clear calibration offsets
-        // clearCalibrationOffsets(me);
-        ESP_LOGI("IMU_CALIBRATION", "Sensor: %d", me->calibration.sensor);
+        // //controll the calibrated sensor
+        // if(me->calibration.sensor < NO_SENSOR){
+        //     me->calibration.sensor++;
+        // } else {
+        //     me->calibration.sensor = ACCEL;
+        // }
+        // //reset accel axis
+        // me->calibration.accelCalAxis = X_POS;
+        // //clear calibration offsets
+        // // clearCalibrationOffsets(me);
+        // ESP_LOGI("IMU_CALIBRATION", "Sensor: %d", me->calibration.sensor);
         status = HANDLED_STATUS;
         break;
 
-    case EV_BUTTON_PRESSED:
-        switch (me->calibration.sensor)
-        {
-        case ACCEL:
-            status = transition(&me->super.super, (StateHandler)&Imu_cal_accel);
-            break;
-
-        case GYRO:
-            // status = transition(&me->super.super, (StateHandler)&Imu_cal_gyro);
-            status = HANDLED_STATUS;
-            break;
-
-        case MAG:
-            // status = transition(&me->super.super, (StateHandler)&Imu_cal_mag);
-            status = HANDLED_STATUS;
-            break;
-
-        default:
-            status = HANDLED_STATUS;
-            break;
-        }
+    case EV_CONTROLLER_CALIBRATE_ACCEL:
+        status = transition(&me->super.super, (StateHandler)&Imu_cal_accel);
         break;
 
-    case EV_BUTTON_DOUBLE_PRESS:
+    case EV_CONTROLLER_CALIBRATE_GYRO:
+        // status = transition(&me->super.super, (StateHandler)&Imu_cal_gyro);
+        status = HANDLED_STATUS;
+        break;
+
+    case EV_CONTROLLER_CALIBRATE_MAG:
+        // status = transition(&me->super.super, (StateHandler)&Imu_cal_mag);
+        status = HANDLED_STATUS;
+        break;
+
+    case EV_CONTROLLER_STOP_CALIBRATION_IMU:
         status = transition(&me->super.super, (StateHandler)&Imu_idle);
         break;
 

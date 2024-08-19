@@ -38,9 +38,22 @@ static menu_t mainMenu = {
 };
 
 static menu_t trackingMenu = {
-    .optionsCount = 0,
+    .optionsCount = 1,
     .currentSelect = 0,
-    .options = {},
+    .options = {
+        {
+            .name = "START",
+            .menu = &trackingMenu,
+            .state = (StateHandler)&Controller_tracking,
+            .evt = { .sig = EV_CONTROLLER_START_READING_IMU}
+        },
+        {
+            .name = "STOP",
+            .menu = &trackingMenu,
+            .state = (StateHandler)&Controller_tracking,
+            .evt = { .sig = EV_CONTROLLER_STOP_READING_IMU}
+        },
+    },
     .originState = (StateHandler)&Controller_tracking,
     .parentMenu = &mainMenu,
 };
@@ -53,16 +66,19 @@ static menu_t calibrationMenu = {
             .name = "ACCEL",
             .menu = &mainMenu,
             .state = (StateHandler)&Controller_main,
+            .evt = { .sig = EV_CONTROLLER_CALIBRATE_ACCEL}
         },
         {
             .name = "MAG",
             .menu = &mainMenu,
             .state = (StateHandler)&Controller_main,
+            .evt = { .sig = EV_CONTROLLER_CALIBRATE_MAG}
         },
         {
             .name = "GYRO",
             .menu = &mainMenu,
             .state = (StateHandler)&Controller_main,
+            .evt = { .sig = EV_CONTROLLER_CALIBRATE_GYRO}
         },
     },
     .originState = (StateHandler)&Controller_calibration,
@@ -94,7 +110,7 @@ static void displayMenu(menu_t const * const menu)
 {
     for (int i = 0; i<menu->optionsCount; i++){
         if(i == menu->currentSelect){
-            ESP_LOGI(TAG, "*%s\n", menu->options[i].name);
+            ESP_LOGI(TAG, "-> %s\n", menu->options[i].name);
         } else {
             ESP_LOGI(TAG, "%s\n", menu->options[i].name);
         }
@@ -160,7 +176,7 @@ State Controller_top(Controller * const me, Event const * const e)
 State Controller_main(Controller * const me, Event const * const e)
 {
     State status;
-    // Event evt = { LAST_EVENT_FLAG, (void *)0}
+    // Event evt = { LAST_EVENT_FLAG, (void *)1};
     switch (e->sig)
     {
     case ENTRY_SIG:
@@ -194,7 +210,7 @@ State Controller_main(Controller * const me, Event const * const e)
 State Controller_tracking(Controller * const me, Event const * const e)
 {
     State status;
-    // Event evt = { LAST_EVENT_FLAG, (void *)0}
+    Event evt = { LAST_EVENT_FLAG, (void *)0};
     switch (e->sig)
     {
     case ENTRY_SIG:
@@ -207,6 +223,7 @@ State Controller_tracking(Controller * const me, Event const * const e)
         break;
     
     case CONTROLLER_ENTER_SIG:
+        Active_post(AO_Broker, &me->menu->options[me->menu->currentSelect].evt);
         status = HANDLED_STATUS;
         break;
     
@@ -215,6 +232,8 @@ State Controller_tracking(Controller * const me, Event const * const e)
         break;
     
     case EXIT_SIG:
+        evt.sig = EV_CONTROLLER_STOP_READING_IMU;
+        Active_post(AO_Broker, &evt);
         status = HANDLED_STATUS;
         break;
     
@@ -237,6 +256,7 @@ State Controller_calibration(Controller * const me, Event const * const e)
         break;
     
     case CONTROLLER_SELECT_SIG:
+        Active_post(AO_Broker, &me->menu->options[me->menu->currentSelect].evt);
         status = HANDLED_STATUS;
         break;
     
