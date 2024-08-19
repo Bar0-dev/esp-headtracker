@@ -33,6 +33,10 @@ State Coms_idle(Coms * const me, Event const * const e)
         status = HANDLED_STATUS;
         break;
     
+    case EV_IMU_SEND_DATA:
+        udp_client_send((char *)e->payload);
+        status = HANDLED_STATUS;
+    
     case EXIT_SIG:
         status = HANDLED_STATUS;
         break;

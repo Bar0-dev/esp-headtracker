@@ -117,6 +117,7 @@ State Imu_read(Imu * const me, Event const * const e)
 {
     State status;
     Event evt = { LAST_EVENT_FLAG, (void *)0 };
+    char *payload = "TESTDATA1";
     ImuData_t data;
     switch (e->sig)
     {
@@ -131,6 +132,9 @@ State Imu_read(Imu * const me, Event const * const e)
         imu_read(data);
         imu_apply_accel_offsets(data, me->calibration.accel.scale, me->calibration.accel.bias);
         imu_log_data(data, ACCEL, true);
+        evt.sig = EV_IMU_SEND_DATA;
+        evt.payload = payload;
+        Active_post(AO_Broker, &evt);
         status = HANDLED_STATUS;
         break;
 

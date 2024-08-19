@@ -55,6 +55,8 @@ void app_main(void)
     Broker_subscribe(&broker, &(Event){ EV_CONTROLLER_CALIBRATE_MAG, (void*)0 }, AO_Imu);
     Broker_subscribe(&broker, &(Event){ EV_CONTROLLER_CALIBRATE_GYRO, (void*)0 }, AO_Imu);
     Broker_subscribe(&broker, &(Event){ EV_CONTROLLER_CONNECT_DEVICE, (void*)0 }, AO_Coms);
+    Broker_subscribe(&broker, &(Event){ EV_IMU_SEND_DATA, (void*)0 }, AO_Coms);
+
     // Broker_subscribe(&broker, &(Event){ EV_IMU_IDLE , (void*)0 }, AO_Led);
     // Broker_subscribe(&broker, &(Event){ EV_IMU_READING , (void*)0 }, AO_Led);
     // Broker_subscribe(&broker, &(Event){ EV_IMU_CALIBRATION_READY , (void*)0 }, AO_Led);
