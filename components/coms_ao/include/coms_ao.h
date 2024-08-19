@@ -5,6 +5,11 @@
 #include "prov_mgr.h"
 #include "events_broker.h"
 
+enum CommsPrivateSignals
+{
+    WIFI_CONNECTED_SIG = LAST_EVENT_FLAG,
+};
+
 typedef struct
 {
     Active super;
