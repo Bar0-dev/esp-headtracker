@@ -1,11 +1,3 @@
-/* BSD Socket API Example
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
 #include "udp_client.h"
 #include <string.h>
 #include <sys/param.h>
@@ -56,16 +48,16 @@ void udp_client_close_socket()
     }
 }
 
-void udp_client_send(char *payload){
+void udp_client_send(packet_t *packet){
     struct sockaddr_in dest_addr;
+    dest_addr.sin_len = packet->length;
     dest_addr.sin_addr.s_addr = inet_addr(HOST_IP_ADDR);
     dest_addr.sin_family = AF_INET;
     dest_addr.sin_port = htons(PORT);
-    int err = sendto(sock, payload, strlen(payload), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+    int err = sendto(sock, packet->payload, packet->length, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
     if (err < 0) {
         ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
     }
-    ESP_LOGI(TAG, "Message sent:%s", payload);
 }
 
 void udp_client_init(void)
@@ -74,5 +66,4 @@ void udp_client_init(void)
     ESP_ERROR_CHECK(esp_netif_init());
 
     udp_client_create_socket();
-    // xTaskCreate(udp_client_task, "udp_client", 4096, NULL, 5, NULL);
 }

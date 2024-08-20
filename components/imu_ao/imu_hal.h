@@ -4,6 +4,7 @@
 #include "driver/i2c.h"
 #include "../registers.h"
 #include "esp_log.h"
+#include "packet.h"
 
 #define I2C_MASTER_SCL_IO           22      /*!< GPIO number used for I2C master clock */
 #define I2C_MASTER_SDA_IO           21      /*!< GPIO number used for I2C master data  */
@@ -68,6 +69,7 @@ typedef int16_t ImuData_t[NO_SENSOR][NO_AXIS];
 
 void imu_hal_init();
 void imu_log_data(ImuData_t data, SensorType_t sensor, bool convert);
+void imu_process_data(ImuData_t data, packet_t *packet);
 void imu_read(ImuData_t data);
 void imu_read_accel_axis(int16_t *data, AccelCalibrationAxis_t axis);
 void imu_calc_scale_and_bias(int16_t scale[], int16_t bias[], int16_t accel_offsets[]);

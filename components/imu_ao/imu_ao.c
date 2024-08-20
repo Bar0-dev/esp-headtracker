@@ -1,4 +1,5 @@
 #include "imu_ao.h"
+#include "packet.h"
 
 // static void clearCalibrationOffsets(Imu * const me)
 // {
@@ -117,7 +118,7 @@ State Imu_read(Imu * const me, Event const * const e)
 {
     State status;
     Event evt = { LAST_EVENT_FLAG, (void *)0 };
-    char *payload = "TESTDATA1";
+    packet_t packet = {.length = 0};
     ImuData_t data;
     switch (e->sig)
     {
@@ -131,9 +132,9 @@ State Imu_read(Imu * const me, Event const * const e)
     case IMU_READ_TIMEOUT_SIG:
         imu_read(data);
         imu_apply_accel_offsets(data, me->calibration.accel.scale, me->calibration.accel.bias);
-        imu_log_data(data, ACCEL, true);
+        imu_process_data(data, &packet);
         evt.sig = EV_IMU_SEND_DATA;
-        evt.payload = payload;
+        evt.payload = &packet;
         Active_post(AO_Broker, &evt);
         status = HANDLED_STATUS;
         break;

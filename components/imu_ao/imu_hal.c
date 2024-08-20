@@ -1,4 +1,5 @@
 #include "imu_hal.h"
+#include <string.h>
 
 static const ImuConfig_t imu_conf = {
     .sampleDivSetting = 0,
@@ -128,43 +129,64 @@ static float map_int16_to_range(int16_t value, int16_t range)
 //SLOW!!
 
 //SLOW
-static void convert_raw(ImuData_t raw, float data[NO_AXIS], SensorType_t sensor)
+static void convert_raw(ImuData_t raw, float data[NO_SENSOR][NO_AXIS])
 {
     uint16_t range;
-    switch (sensor)
-    {
-    case ACCEL:
-        range = accelRange[imu_conf.accelRangeSetting];
-        break;
-    
-    case GYRO:
-        range = gyroRange[imu_conf.gyroRangeSetting];
-        break;
-    
-    case MAG:
-        range = magRange;
-        break;
-    
-    default:
-        assert(0);
-        break;
-    }
+    for(SensorType_t sensor = ACCEL; sensor < NO_SENSOR; sensor++){
+        switch (sensor)
+        {
+        case ACCEL:
+            range = accelRange[imu_conf.accelRangeSetting];
+            break;
+        
+        case GYRO:
+            range = gyroRange[imu_conf.gyroRangeSetting];
+            break;
+        
+        case MAG:
+            range = magRange;
+            break;
+        
+        default:
+            assert(0);
+            break;
+        }
 
-    for(uint8_t axis=X_AXIS; axis<NO_AXIS; axis++){
-        data[axis] = map_int16_to_range(raw[sensor][axis], range);
+        for(uint8_t axis=X_AXIS; axis<NO_AXIS; axis++){
+            data[sensor][axis] = map_int16_to_range(raw[sensor][axis], range);
+        }
     }
     return;
 }
 //SLOW
 
-void imu_log_data(ImuData_t data, SensorType_t sensor, bool convert)
+// void imu_log_data(ImuData_t data, SensorType_t sensor, bool convert)
+// {
+//     float data_to_show[NO_AXIS];
+//     if(convert){
+//         convert_raw(data, data_to_show, sensor);
+//         ESP_LOGI("IMU", "X: %.2f, Y: %.2f, Z: %.2f", data_to_show[0], data_to_show[1], data_to_show[2]);
+//     } else {
+//         ESP_LOGI("IMU", "X: %d, Y: %d, Z: %d", data[sensor][0], data[sensor][1], data[sensor][2]);
+//     }
+// }
+
+//TODO: move string and packet preping functionality to COMS AO and leave only conversion to ranged floats
+void imu_process_data(ImuData_t data, packet_t * packet)
 {
-    float data_to_show[NO_AXIS];
-    if(convert){
-        convert_raw(data, data_to_show, sensor);
-        ESP_LOGI("IMU", "X: %.2f, Y: %.2f, Z: %.2f", data_to_show[0], data_to_show[1], data_to_show[2]);
-    } else {
-        ESP_LOGI("IMU", "X: %d, Y: %d, Z: %d", data[sensor][0], data[sensor][1], data[sensor][2]);
+    float conveted_data[NO_SENSOR][NO_AXIS];
+    char buffer[MAX_SINGLE_READING_SIZE];
+    convert_raw(data, conveted_data);
+    for(SensorType_t sensor = ACCEL; sensor < GYRO; sensor++){
+        for(Axis_t axis=X_AXIS; axis<NO_AXIS; axis++){
+            if(axis >= Z_AXIS){
+                sprintf(buffer, "%.2f\n", conveted_data[sensor][axis]);
+            } else {
+                sprintf(buffer, "%.2f,", conveted_data[sensor][axis]);
+            }
+            packet->length += strlen(buffer);
+            strcat(packet->payload, buffer);
+        }
     }
 }
 
