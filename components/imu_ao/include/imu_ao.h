@@ -6,6 +6,7 @@
 #include "events_broker.h"
 #include "nvs_helpers.h"
 #include "../imu_hal.h"
+#include "../imu_helpers.h"
 
 #define READ_PERIOD 10 //calculation period in ms
 #define PRE_CALIBRATION_PERIOD 5*1000 //calculation period in ms (x*1000[ms] = x[s])

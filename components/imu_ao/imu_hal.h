@@ -4,7 +4,6 @@
 #include "driver/i2c.h"
 #include "../registers.h"
 #include "esp_log.h"
-#include "packet.h"
 
 #define I2C_MASTER_SCL_IO           22      /*!< GPIO number used for I2C master clock */
 #define I2C_MASTER_SDA_IO           21      /*!< GPIO number used for I2C master data  */
@@ -33,10 +32,6 @@ typedef struct
     PwrMgmt_t pwrMgmtSetting;
     MagControlConf_t magControlSetting;
 } ImuConfig_t;
-
-static const uint8_t accelRange[ACCEL_16G+1] = { 2, 4, 8, 16};
-static const uint16_t gyroRange[GYRO_2000DPS+1] = { 250, 500, 1000, 2000 };
-static const uint16_t magRange = AK8362_MAX_RANGE;
 
 typedef enum
 {
@@ -68,11 +63,11 @@ typedef enum
 typedef int16_t ImuData_t[NO_SENSOR][NO_AXIS];
 
 void imu_hal_init();
-void imu_log_data(ImuData_t data, SensorType_t sensor, bool convert);
-void imu_process_data(ImuData_t data, packet_t *packet);
 void imu_read(ImuData_t data);
 void imu_read_accel_axis(int16_t *data, AccelCalibrationAxis_t axis);
-void imu_calc_scale_and_bias(int16_t scale[], int16_t bias[], int16_t accel_offsets[]);
-void imu_apply_accel_offsets(ImuData_t data, int16_t scales[], int16_t bias[]);
+ImuConfig_t const *imu_get_config();
+uint8_t imu_get_accel_range();
+uint16_t imu_get_gyro_range();
+uint16_t imu_get_mag_range();
 
 #endif
