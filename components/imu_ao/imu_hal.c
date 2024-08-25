@@ -177,17 +177,15 @@ void imu_process_data(ImuData_t data, packet_t * packet)
     float conveted_data[NO_SENSOR][NO_AXIS];
     char buffer[MAX_SINGLE_READING_SIZE];
     convert_raw(data, conveted_data);
-    for(SensorType_t sensor = ACCEL; sensor < GYRO; sensor++){
+    for(SensorType_t sensor = MAG; sensor < NO_SENSOR; sensor++){
         for(Axis_t axis=X_AXIS; axis<NO_AXIS; axis++){
-            if(axis >= Z_AXIS){
-                sprintf(buffer, "%.2f\n", conveted_data[sensor][axis]);
-            } else {
-                sprintf(buffer, "%.2f,", conveted_data[sensor][axis]);
-            }
+            sprintf(buffer, "%.2f,", conveted_data[sensor][axis]);
             packet->length += strlen(buffer);
             strcat(packet->payload, buffer);
         }
     }
+    strcat(packet->payload, "\n");
+    packet->length++;
 }
 
 static void mag_read(ImuData_t data)

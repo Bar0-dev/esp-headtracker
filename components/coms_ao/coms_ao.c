@@ -19,6 +19,8 @@ State Coms_idle(Coms * const me, Event const * const e)
     switch (e->sig)
     {
     case ENTRY_SIG:
+        evt.sig = EV_CONTROLLER_CONNECT_DEVICE;
+        Active_post(&me->super, &evt);
         status = HANDLED_STATUS;
         break;
 

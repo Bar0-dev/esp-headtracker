@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define MAX_PACKET_SIZE 84
+#define MAX_PACKET_SIZE 88
 #define MAX_SINGLE_READING_SIZE 8
 
 typedef struct {

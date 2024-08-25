@@ -50,7 +50,7 @@ void udp_client_close_socket()
 
 void udp_client_send(packet_t *packet){
     struct sockaddr_in dest_addr;
-    dest_addr.sin_len = packet->length;
+    dest_addr.sin_len = packet->length+1;
     dest_addr.sin_addr.s_addr = inet_addr(HOST_IP_ADDR);
     dest_addr.sin_family = AF_INET;
     dest_addr.sin_port = htons(PORT);
