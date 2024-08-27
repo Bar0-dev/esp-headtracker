@@ -9,10 +9,10 @@ static float map_int16_to_range(int16_t value, int16_t range)
 //SLOW!!
 
 //SLOW
-static void convert_raw(ImuData_t raw, float data[NO_SENSOR][NO_AXIS])
+static void convertRaw(ImuData_t raw, float data[NO_SENSOR][NO_AXIS])
 {
     uint16_t range;
-    for(SensorType_t sensor = ACCEL; sensor < NO_SENSOR; sensor++){
+    for(Sensor_t sensor = ACCEL; sensor < NO_SENSOR; sensor++){
         switch (sensor)
         {
         case ACCEL:
@@ -40,25 +40,42 @@ static void convert_raw(ImuData_t raw, float data[NO_SENSOR][NO_AXIS])
 }
 //SLOW
 
-// void imu_log_data(ImuData_t data, SensorType_t sensor, bool convert)
+// void imu_log_data(ImuData_t data, Sensor_t sensor, bool convert)
 // {
 //     float data_to_show[NO_AXIS];
 //     if(convert){
-//         convert_raw(data, data_to_show, sensor);
+//         convertRaw(data, data_to_show, sensor);
 //         ESP_LOGI("IMU", "X: %.2f, Y: %.2f, Z: %.2f", data_to_show[0], data_to_show[1], data_to_show[2]);
 //     } else {
 //         ESP_LOGI("IMU", "X: %d, Y: %d, Z: %d", data[sensor][0], data[sensor][1], data[sensor][2]);
 //     }
 // }
 
-//TODO: move string and packet preping functionality to COMS AO and leave only conversion to ranged floats
-void imu_process_data(ImuData_t data, packet_t * packet)
+AxisString_t axes[] = {
+    "X_AXIS",
+    "Y_AXIS",
+    "Z_AXIS",
+};
+
+void getAxisName(Axis_t axis, AxisString_t axisString)
+{
+    strcpy(axisString, axes[axis]);
+}
+
+void calibrationSetNotCompleted(CalibtrationData_t * calData)
+{
+    calData->accel.completed = false;
+    calData->gyro.completed = false;
+    calData->mag.completed = false;
+}
+
+void preparePacket(ImuData_t data, packet_t * packet)
 {
     float conveted_data[NO_SENSOR][NO_AXIS];
     char buffer[MAX_SINGLE_READING_SIZE];
-    convert_raw(data, conveted_data);
-    for(SensorType_t sensor = GYRO; sensor < MAG; sensor++){
-        for(Axis_t axis=X_AXIS; axis<NO_AXIS; axis++){
+    convertRaw(data, conveted_data);
+    for(Sensor_t sensor = ACCEL; sensor < MAG; sensor++){
+        for(Axis_t axis = X_AXIS; axis<NO_AXIS; axis++){
             sprintf(buffer, "%.2f,", conveted_data[sensor][axis]);
             packet->length += strlen(buffer);
             strcat(packet->payload, buffer);
@@ -68,28 +85,82 @@ void imu_process_data(ImuData_t data, packet_t * packet)
     packet->length++;
 }
 
-void imu_calc_scale_and_bias(int16_t scale[], int16_t bias[], int16_t accel_offsets[]){
+void accelBufferClear(AccelCalibrationBuffer_t * buffer)
+{
+    for(Direction_t direction = POSITIVE; direction < NO_DIRECTION; direction++){
+        for(Axis_t axis = X_AXIS; axis < NO_AXIS; axis++){
+            buffer->sums[direction][axis] = 0;
+        }
+    }
+    buffer->samples = 0;
+}
+
+void accelUpdateBuffer(ImuData_t read, AccelCalibrationBuffer_t * buffer, Axis_t axis, Direction_t direction)
+{
+    for(Axis_t axis = X_AXIS; axis < NO_AXIS; axis++){
+        buffer->sums[direction][axis] += read[ACCEL][axis];
+    }
+    buffer->samples++;
+}
+
+void accelCalculateBiasAndScale(AccelCalibrationBuffer_t * buffer, AccelCalibrationData_t * data)
+{
     uint8_t range = imu_get_accel_range();
     int16_t ymax = INT16_MAX/range;
     int16_t pos_offset;
     int16_t neg_offset;
-
-    for (int8_t axis = X_AXIS; axis<NO_AXIS; axis++){
-        int16_t a = accel_offsets[axis<<1];
-        int16_t b = accel_offsets[(axis<<1)+1];
+    vector32_t * positiveSumsVector = &buffer->sums[POSITIVE];
+    vector32_t * negativeSumsVector = &buffer->sums[NEGATIVE];
+    for (Axis_t axis = X_AXIS; axis<NO_AXIS; axis++){
+        int32_t a = (*positiveSumsVector)[axis];
+        int32_t b = (*negativeSumsVector)[axis];
         pos_offset = (a > b) ? a : b;
         neg_offset = (a < b) ? a : b;
         if((pos_offset-neg_offset)!=0){
-            scale[axis] = (int16_t)(ACCEL_SCALE_FACTOR*(2.0*ymax/(pos_offset-neg_offset)));
-            bias[axis] = -ymax*(pos_offset+neg_offset)/(pos_offset-neg_offset);
+            data->scale[axis] = (int16_t)(ACCEL_SCALE_FACTOR*(2.0*ymax/(pos_offset-neg_offset)));
+            data->bias[axis] = -ymax*(pos_offset+neg_offset)/(pos_offset-neg_offset);
         }
-        ESP_LOGI("IMU-HAL", "axis: %d, scale:%d, bias:%d", axis, scale[axis], bias[axis]);
+        ESP_LOGI("IMU-HAL", "axis: %d, scale:%d, bias:%d", axis, data->scale[axis], data->bias[axis]);
+    }
+    data->completed = true;
+}
+
+void accelApplyBiasAndScale(ImuData_t output, AccelCalibrationData_t * data)
+{
+    Sensor_t sensor = ACCEL;
+    for(Axis_t axis = X_AXIS; axis<NO_AXIS; axis++){
+        output[sensor][axis] = (int16_t)(data->scale[axis]*output[sensor][axis]/ACCEL_SCALE_FACTOR) + data->bias[axis];
     }
 }
 
-void imu_apply_accel_offsets(ImuData_t data, int16_t scales[], int16_t bias[]){
-    SensorType_t sensor = ACCEL;
-    for(uint8_t axis = X_AXIS; axis<NO_AXIS; axis++){
-        data[sensor][axis] = (int16_t)(scales[axis]*data[sensor][axis]/ACCEL_SCALE_FACTOR) + bias[axis];
+void gyroBufferClear(GyroCalibrationBuffer_t * buffer)
+{
+    for(Axis_t axis = X_AXIS; axis < NO_AXIS; axis++){
+        buffer->sums[axis] = 0;
+    }
+    buffer->samples = 0;
+}
+
+void gyroUpdateBuffer(ImuData_t read, GyroCalibrationBuffer_t * buffer)
+{
+    for(Axis_t axis = X_AXIS; axis < NO_AXIS; axis++){
+        buffer->sums[axis] += read[GYRO][axis];
+    }
+    buffer->samples++;
+    ESP_LOGI("IMU-HAL", "val: %ld, sample:%d", buffer->sums[X_AXIS], buffer->samples);
+}
+
+void gyroCalculateBias(GyroCalibrationBuffer_t * buffer, GyroCalibrationData_t * data)
+{
+    for(Axis_t axis = X_AXIS; axis < NO_AXIS; axis++){
+        data->bias[axis] = (int16_t)(buffer->sums[axis]/buffer->samples);
+        ESP_LOGI("IMU-HAL", "axis: %d, bias:%d", axis, data->bias[axis]);
+    }
+}
+
+void gyroApplyBias(ImuData_t output, GyroCalibrationData_t * data)
+{
+    for(Axis_t axis = X_AXIS; axis < NO_AXIS; axis++){
+        output[GYRO][axis] = output[GYRO][axis] - data->bias[axis];
     }
 }

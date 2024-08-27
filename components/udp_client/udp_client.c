@@ -1,5 +1,6 @@
 #include "udp_client.h"
 #include <string.h>
+// TODO: clean up this includes
 #include <sys/param.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -17,7 +18,7 @@
 #define HOST_IP_ADDR CONFIG_IPV4_ADDR
 #define PORT CONFIG_PORT
 
-static char host_ip[] = HOST_IP_ADDR ;
+// static char host_ip[] = HOST_IP_ADDR ;
 static int addr_family = AF_INET;
 static int ip_protocol = IPPROTO_IP;
 static const char *TAG = "UDP";

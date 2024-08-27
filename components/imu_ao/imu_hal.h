@@ -47,25 +47,22 @@ typedef enum
     GYRO,
     MAG,
     NO_SENSOR
-} SensorType_t;
+} Sensor_t;
 
 typedef enum
 {
-    X_POS,
-    X_NEG,
-    Y_POS,
-    Y_NEG,
-    Z_POS,
-    Z_NEG,
-    ACCEL_NO_AXIS
-} AccelCalibrationAxis_t;
+    POSITIVE,
+    NEGATIVE,
+    NO_DIRECTION
+} Direction_t;
 
-typedef int16_t ImuData_t[NO_SENSOR][NO_AXIS];
+typedef int16_t vector16_t[NO_AXIS];
+typedef int32_t vector32_t[NO_AXIS];
+
+typedef vector16_t ImuData_t[NO_SENSOR];
 
 void imu_hal_init();
 void imu_read(ImuData_t data);
-void imu_read_accel_axis(int16_t *data, AccelCalibrationAxis_t axis);
-ImuConfig_t const *imu_get_config();
 uint8_t imu_get_accel_range();
 uint16_t imu_get_gyro_range();
 uint16_t imu_get_mag_range();

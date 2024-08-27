@@ -40,6 +40,7 @@ State Coms_idle(Coms * const me, Event const * const e)
         packet_t *packet = (packet_t *)e->payload;
         udp_client_send(packet);
         status = HANDLED_STATUS;
+        break;
     
     case EXIT_SIG:
         status = HANDLED_STATUS;

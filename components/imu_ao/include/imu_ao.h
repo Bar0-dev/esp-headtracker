@@ -15,20 +15,6 @@
 
 typedef struct
 {
-    int16_t offsets[ACCEL_NO_AXIS];
-    AccelCalibrationAxis_t axis;
-    int16_t bias[NO_AXIS];
-    int16_t scale[NO_AXIS];
-    bool completed;
-} AccelCalibrationData_t;
-
-typedef struct 
-{
-    AccelCalibrationData_t accel;
-} CalibtrationData_t;
-
-typedef struct
-{
     Active super;
     CalibtrationData_t calibration;
     TimeEvent readTimer;

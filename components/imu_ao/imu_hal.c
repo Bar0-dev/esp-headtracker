@@ -156,30 +156,6 @@ void imu_read(ImuData_t data)
     return;
 }
 
-void imu_read_accel_axis(int16_t *data, AccelCalibrationAxis_t axis)
-{
-    uint8_t buffer[2];
-    switch (axis>>1)
-    {
-    case X_AXIS:
-        ESP_ERROR_CHECK(imu_register_read(MPU9250_SENSOR_ADDR, ACCEL_XOUT_H, buffer, 2));
-        break;
-
-    case Y_AXIS:
-        ESP_ERROR_CHECK(imu_register_read(MPU9250_SENSOR_ADDR, ACCEL_YOUT_H, buffer, 2));
-        break;
-
-    case Z_AXIS:
-        ESP_ERROR_CHECK(imu_register_read(MPU9250_SENSOR_ADDR, ACCEL_ZOUT_H, buffer, 2));
-        break;
-
-    default:
-        break;
-    }
-    *data = ((int16_t)buffer[0] << 8) | buffer[1];
-    return;
-}
-
 uint8_t imu_get_accel_range()
 {
     return accelRange[imu_conf.accelRangeSetting];
