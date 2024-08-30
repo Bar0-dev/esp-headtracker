@@ -69,7 +69,7 @@ void calibrationSetNotCompleted(CalibtrationData_t * calData)
     calData->mag.completed = false;
 }
 
-void preparePacket(ImuData_t data, packet_t * packet)
+void preparePacket(ImuData_t data, Packet_t * packet)
 {
     float conveted_data[NO_SENSOR][NO_AXIS];
     char buffer[MAX_SINGLE_READING_SIZE];
@@ -109,8 +109,8 @@ void accelCalculateBiasAndScale(AccelCalibrationBuffer_t * buffer, AccelCalibrat
     int16_t ymax = INT16_MAX/range;
     int16_t pos_offset;
     int16_t neg_offset;
-    vector32_t * positiveSumsVector = &buffer->sums[POSITIVE];
-    vector32_t * negativeSumsVector = &buffer->sums[NEGATIVE];
+    Vector32_t * positiveSumsVector = &buffer->sums[POSITIVE];
+    Vector32_t * negativeSumsVector = &buffer->sums[NEGATIVE];
     for (Axis_t axis = X_AXIS; axis<NO_AXIS; axis++){
         int32_t a = (*positiveSumsVector)[axis];
         int32_t b = (*negativeSumsVector)[axis];

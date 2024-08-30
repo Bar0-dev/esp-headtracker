@@ -1,5 +1,5 @@
 #include "imu_ao.h"
-#include "packet.h"
+#include "core.h"
 
 //Forward declarations
 State Imu_init(Imu * const me, Event const * const e);
@@ -23,7 +23,8 @@ State Imu_top(Imu * const me, Event const * const e)
     {
     case ENTRY_SIG:
         //load offsets from nvs if they exist
-        get_accel_offsets(me->calibration.accel.scale, me->calibration.accel.bias);
+        get_accel_scale_and_bias(me->calibration.accel.scale, me->calibration.accel.bias);
+        get_gyro_bias(me->calibration.gyro.bias);
         status = HANDLED_STATUS;
         break;
 
@@ -94,7 +95,7 @@ State Imu_read(Imu * const me, Event const * const e)
 {
     State status;
     Event evt = { LAST_EVENT_FLAG, (void *)0 };
-    packet_t packet = {.length = 0};
+    Packet_t packet = {.length = 0};
     ImuData_t read;
     switch (e->sig)
     {
@@ -140,8 +141,12 @@ State Imu_calibration(Imu * const me, Event const * const e)
     
     case EXIT_SIG:
         if(me->calibration.accel.completed){
-            store_accel_offsets(me->calibration.accel.scale, me->calibration.accel.bias);
+            set_accel_scale_and_bias(me->calibration.accel.scale, me->calibration.accel.bias);
             me->calibration.accel.completed = false;
+        }
+        if(me->calibration.gyro.completed){
+            set_gyro_bias(me->calibration.gyro.bias);
+            me->calibration.gyro.completed = false;
         }
         status = HANDLED_STATUS;
         break;

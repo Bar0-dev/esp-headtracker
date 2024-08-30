@@ -2,7 +2,7 @@
 #define IMU_HELPERS_H
 
 #include "imu_hal.h"
-#include "packet.h"
+#include "core.h"
 
 #define MAX_MAG_CALIBRATION_SAMPLES 800 //equivalent of 8s of calibration
 
@@ -13,21 +13,21 @@ typedef outputVector_t  outputMatrix_t [NO_SENSOR];
 
 typedef struct
 {
-    vector16_t bias;
-    vector16_t scale;
+    Vector16_t bias;
+    Vector16_t scale;
     bool completed;
 } AccelCalibrationData_t;
 
 typedef struct
 {
-    vector16_t bias;
+    Vector16_t bias;
     bool completed;
 } GyroCalibrationData_t;
 
 typedef struct
 {
-    vector16_t bias;
-    vector16_t transformMatrix[NO_AXIS];
+    Vector16_t bias;
+    Vector16_t transformMatrix[NO_AXIS];
     bool completed;
 } MagCalibrationData_t;
 
@@ -40,25 +40,25 @@ typedef struct
 
 typedef struct
 {
-    vector32_t sums[NO_DIRECTION];
+    Vector32_t sums[NO_DIRECTION];
     uint16_t samples;
 } AccelCalibrationBuffer_t;
 
 typedef struct
 {
-    vector32_t sums;
+    Vector32_t sums;
     uint16_t samples;
 } GyroCalibrationBuffer_t;
 
 typedef struct
 {
     ImuData_t read;
-    vector16_t stored[MAX_MAG_CALIBRATION_SAMPLES];
+    Vector16_t stored[MAX_MAG_CALIBRATION_SAMPLES];
 } MagCalibrationBuffe_t;
 
 void calibrationSetNotCompleted(CalibtrationData_t * calData);
 void getAxisName(Axis_t axis, AxisString_t axisString);
-void preparePacket(ImuData_t data, packet_t * packet);
+void preparePacket(ImuData_t data, Packet_t * packet);
 void accelBufferClear(AccelCalibrationBuffer_t * buffer);
 void accelUpdateBuffer(ImuData_t read, AccelCalibrationBuffer_t * buffer, Axis_t axis, Direction_t direction);
 void accelCalculateBiasAndScale(AccelCalibrationBuffer_t * buffer, AccelCalibrationData_t * data);

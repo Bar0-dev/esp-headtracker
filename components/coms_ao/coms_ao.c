@@ -1,6 +1,6 @@
 #include "coms_ao.h"
 #include "udp_client.h"
-#include "packet.h"
+#include "core.h"
 
 //Forward declarations
 State Coms_init(Coms * const me, Event const * const e);
@@ -37,7 +37,7 @@ State Coms_idle(Coms * const me, Event const * const e)
         break;
     
     case EV_IMU_SEND_DATA:
-        packet_t *packet = (packet_t *)e->payload;
+        Packet_t *packet = (Packet_t *)e->payload;
         udp_client_send(packet);
         status = HANDLED_STATUS;
         break;

@@ -4,6 +4,7 @@
 #include "driver/i2c.h"
 #include "../registers.h"
 #include "esp_log.h"
+#include "core.h"
 
 #define I2C_MASTER_SCL_IO           22      /*!< GPIO number used for I2C master clock */
 #define I2C_MASTER_SDA_IO           21      /*!< GPIO number used for I2C master data  */
@@ -33,33 +34,7 @@ typedef struct
     MagControlConf_t magControlSetting;
 } ImuConfig_t;
 
-typedef enum
-{
-    X_AXIS,
-    Y_AXIS,
-    Z_AXIS, 
-    NO_AXIS
-} Axis_t;
-
-typedef enum
-{
-    ACCEL,
-    GYRO,
-    MAG,
-    NO_SENSOR
-} Sensor_t;
-
-typedef enum
-{
-    POSITIVE,
-    NEGATIVE,
-    NO_DIRECTION
-} Direction_t;
-
-typedef int16_t vector16_t[NO_AXIS];
-typedef int32_t vector32_t[NO_AXIS];
-
-typedef vector16_t ImuData_t[NO_SENSOR];
+typedef Vector16_t ImuData_t[NO_SENSOR];
 
 void imu_hal_init();
 void imu_read(ImuData_t data);
