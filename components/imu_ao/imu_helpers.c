@@ -90,36 +90,33 @@ void accelBufferClear(AccelCalibrationBuffer_t * buffer)
     for(Direction_t direction = POSITIVE; direction < NO_DIRECTION; direction++){
         for(Axis_t axis = X_AXIS; axis < NO_AXIS; axis++){
             buffer->sums[direction][axis] = 0;
+            buffer->samples[direction][axis] = 0;
         }
     }
-    buffer->samples = 0;
 }
 
 void accelUpdateBuffer(ImuData_t read, AccelCalibrationBuffer_t * buffer, Axis_t axis, Direction_t direction)
 {
-    for(Axis_t axis = X_AXIS; axis < NO_AXIS; axis++){
-        buffer->sums[direction][axis] += read[ACCEL][axis];
-    }
-    buffer->samples++;
+    buffer->sums[direction][axis] += read[ACCEL][axis];
+    buffer->samples[direction][axis]++;
 }
 
 void accelCalculateBiasAndScale(AccelCalibrationBuffer_t * buffer, AccelCalibrationData_t * data)
 {
     uint8_t range = imu_get_accel_range();
     int16_t ymax = INT16_MAX/range;
-    int16_t pos_offset;
-    int16_t neg_offset;
-    Vector32_t * positiveSumsVector = &buffer->sums[POSITIVE];
-    Vector32_t * negativeSumsVector = &buffer->sums[NEGATIVE];
+    int16_t ymin = INT16_MIN/range;
+    int16_t xmax;
+    int16_t xmin;
     for (Axis_t axis = X_AXIS; axis<NO_AXIS; axis++){
-        int32_t a = (*positiveSumsVector)[axis];
-        int32_t b = (*negativeSumsVector)[axis];
-        pos_offset = (a > b) ? a : b;
-        neg_offset = (a < b) ? a : b;
-        if((pos_offset-neg_offset)!=0){
-            data->scale[axis] = (int16_t)(ACCEL_SCALE_FACTOR*(2.0*ymax/(pos_offset-neg_offset)));
-            data->bias[axis] = -ymax*(pos_offset+neg_offset)/(pos_offset-neg_offset);
-        }
+        //Guard to not divide by zero
+        if((buffer->samples[POSITIVE][axis] == 0) || (buffer->samples[NEGATIVE][axis] == 0)){return (void)0;}
+        int16_t avga = (int16_t)(buffer->sums[POSITIVE][axis]/buffer->samples[POSITIVE][axis]);
+        int16_t avgb = (int16_t)(buffer->sums[NEGATIVE][axis]/buffer->samples[NEGATIVE][axis]);
+        xmax = (avga > avgb) ? avga : avgb;
+        xmin = (avga < avgb) ? avga : avgb;
+        data->scale[axis] = (int16_t)(ACCEL_SCALE_FACTOR*(ymax-ymin)/(xmax-xmin));
+        data->bias[axis] = ymax-xmax*(ymax-ymin)/(xmax-xmin);
         ESP_LOGI("IMU-HAL", "axis: %d, scale:%d, bias:%d", axis, data->scale[axis], data->bias[axis]);
     }
     data->completed = true;
@@ -156,6 +153,7 @@ void gyroCalculateBias(GyroCalibrationBuffer_t * buffer, GyroCalibrationData_t *
         data->bias[axis] = (int16_t)(buffer->sums[axis]/buffer->samples);
         ESP_LOGI("IMU-HAL", "axis: %d, bias:%d", axis, data->bias[axis]);
     }
+    data->completed = true;
 }
 
 void gyroApplyBias(ImuData_t output, GyroCalibrationData_t * data)

@@ -23,7 +23,7 @@ static void get_int16(nvs_handle_t *handle, const KeyString_t key, int16_t *val)
 {
     esp_err_t err = nvs_get_i16(*handle, key, val);
     if(err == ESP_ERR_NVS_NOT_FOUND) {
-        ESP_LOGI(TAG, "\nThe value is not initialized yet!\n");
+        ESP_LOGI(TAG, "\nThe value is not initialised yet!\n");
     }
     ESP_LOGI(TAG, "Value was read: %d", *val);
 }

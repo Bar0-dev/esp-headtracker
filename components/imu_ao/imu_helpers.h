@@ -8,9 +8,6 @@
 
 typedef char* AxisString_t;
 
-typedef float outputVector_t[NO_AXIS];
-typedef outputVector_t  outputMatrix_t [NO_SENSOR];
-
 typedef struct
 {
     Vector16_t bias;
@@ -41,7 +38,7 @@ typedef struct
 typedef struct
 {
     Vector32_t sums[NO_DIRECTION];
-    uint16_t samples;
+    Vector16_t samples[NO_DIRECTION];
 } AccelCalibrationBuffer_t;
 
 typedef struct

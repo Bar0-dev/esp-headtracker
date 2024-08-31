@@ -135,7 +135,6 @@ State Imu_calibration(Imu * const me, Event const * const e)
     switch (e->sig)
     {
     case ENTRY_SIG:
-        calibrationSetNotCompleted(&me->calibration);
         status = HANDLED_STATUS;
         break;
     
@@ -172,6 +171,7 @@ State Imu_cal_accel(Imu * const me, Event const * const e)
     switch (e->sig)
     {
     case ENTRY_SIG:
+        accelBufferClear(&buffer);
         TimeEvent_arm(&me->preCalibrationTimer);
         axis = X_AXIS;
         direction = POSITIVE;
@@ -183,7 +183,6 @@ State Imu_cal_accel(Imu * const me, Event const * const e)
     case IMU_PRE_CALIBRATION_TIMEOUT_SIG:
         evt.sig = EV_IMU_CALIBRATION_IN_PROGRESS;
         Active_post(AO_Broker, &evt);
-        accelBufferClear(&buffer);
         TimeEvent_arm(&me->readTimer);
         TimeEvent_arm(&me->calibrationTimer);
         status = HANDLED_STATUS;
@@ -269,7 +268,6 @@ State Imu_cal_gyro(Imu * const me, Event const * const e)
         break;
 
     case EXIT_SIG:
-        /* code */
         gyroCalculateBias(&buffer, &me->calibration.gyro);
         status = HANDLED_STATUS;
         break;
@@ -288,4 +286,5 @@ void Imu_ctor(Imu * const me)
     TimeEvent_ctor(&me->calibrationTimer, "IMU calibration timer", (TickType_t)(ACCEL_GYRO_CALIBRATION_PERIOD/portTICK_PERIOD_MS), pdFALSE, IMU_CALIBRATION_TIMEOUT_SIG, &me->super);
     TimeEvent_ctor(&me->preCalibrationTimer, "IMU pre calibration timer", (TickType_t)(PRE_CALIBRATION_PERIOD/portTICK_PERIOD_MS), pdFALSE, IMU_PRE_CALIBRATION_TIMEOUT_SIG, &me->super);
     imu_hal_init();
+    calibrationSetNotCompleted(&me->calibration);
 }

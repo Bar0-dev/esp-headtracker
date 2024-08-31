@@ -10,7 +10,7 @@
 
 #define MAX_KEY_LENGTH 20
 
-typedef char KeyString_t[MAX_KEY_LENGTH];
+typedef char *KeyString_t;
 
 void get_accel_scale_and_bias(Vector16_t scale, Vector16_t bias);
 void set_accel_scale_and_bias(Vector16_t scale, Vector16_t bias);
