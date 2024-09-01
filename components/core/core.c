@@ -35,6 +35,14 @@ void addRowMatrix16(int16_t * row, uint16_t index, Matrix16_t * matrix)
     }
 }
 
+void addColumnMatrix16(int16_t * column, uint16_t index, Matrix16_t * matrix)
+{
+    for(uint16_t row = 0; row < matrix->numOfRows; row++)
+    {
+        matrix->m[row][index] = column[row];
+    }
+}
+
 void allocateMatrix32(uint16_t rows, uint16_t columns, Matrix32_t * matrix)
 {
     matrix->m = (int32_t **)malloc(rows * sizeof(int32_t *));
@@ -107,5 +115,14 @@ void printMatrix32(Matrix32_t * matrix)
             ESP_LOGI(TAG, "%ld ", matrix->m[row][column]);
         }
         ESP_LOGI(TAG, "\n");
+    }
+}
+
+void transposeMatrix16(Matrix16_t * matrix, Matrix16_t * matrixTransposed)
+{
+    allocateMatrix16(matrix->numOfCols, matrix->numOfRows, matrixTransposed);
+    for(uint16_t column = 0; column < matrixTransposed->numOfCols; column++)
+    {
+        addColumnMatrix16(matrix->m[column], column, matrixTransposed);
     }
 }

@@ -29,6 +29,24 @@ TEST_CASE("When adding row to matrix16_t", "addRowMatrix16 unit test"){
     freeMatrix16(&m1);
 }
 
+TEST_CASE("When adding column to matrix16_t", "addColumnMatrix16 unit test"){
+    Matrix16_t m1;
+    uint16_t rows = 4;
+    uint16_t columns = 3;
+    allocateMatrix16(rows, columns, &m1);
+    int16_t column[] = {1, 2, 3, 4};
+    for(uint16_t columnIndex = 0; columnIndex < m1.numOfCols; columnIndex++){
+        addColumnMatrix16(column, columnIndex, &m1);
+    }
+    
+    for(uint16_t rowIndex = 0; rowIndex < m1.numOfRows; rowIndex++){
+        for(uint16_t columnIndex = 0; columnIndex < m1.numOfCols; columnIndex++){
+            TEST_ASSERT_EQUAL_INT16( column[rowIndex], m1.m[rowIndex][columnIndex]);
+        }
+    }
+    freeMatrix16(&m1);
+}
+
 TEST_CASE("When multiplying two matrix16_t", "multiplyMatrix16 unit test"){
     Matrix16_t m1;
     Matrix16_t m2;
@@ -63,4 +81,33 @@ TEST_CASE("When multiplying two matrix16_t", "multiplyMatrix16 unit test"){
     freeMatrix16(&m2);
     freeMatrix32(&mOut);
     freeMatrix32(&mExpected);
+}
+
+TEST_CASE("When transposing matrix16_t", "transposeMatrix16 unit test"){
+    Matrix16_t m1;
+    Matrix16_t mOut;
+    Matrix16_t mExpected;
+    uint16_t rows = 3;
+    uint16_t columns = 4;
+    allocateMatrix16(rows, columns, &m1);
+    allocateMatrix16(columns, rows, &mExpected);
+    int16_t row1[] = {1, 2, 3, 4};
+    for(uint16_t row = 0; row < m1.numOfRows; row++){
+        addRowMatrix16(row1, row, &m1);
+    }
+    for(uint16_t column = 0; column < mExpected.numOfCols; column++){
+        addColumnMatrix16(row1, column, &mExpected);
+    }
+    
+    transposeMatrix16(&m1, &mOut);
+
+    for(uint16_t row = 0; row < mExpected.numOfRows; row++){
+        for(uint16_t column = 0; column < mExpected.numOfCols; column++){
+            TEST_ASSERT_EQUAL_INT16( mExpected.m[row][column], mExpected.m[row][column] );
+        }
+    }
+
+    freeMatrix16(&m1);
+    freeMatrix16(&mOut);
+    freeMatrix16(&mExpected);
 }

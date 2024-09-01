@@ -58,6 +58,8 @@ typedef struct
 void allocateMatrix16(uint16_t rows, uint16_t columns, Matrix16_t * matrix);
 void freeMatrix16(Matrix16_t * matrix);
 void addRowMatrix16(int16_t * row, uint16_t index, Matrix16_t * matrix);
+void addColumnMatrix16(int16_t * column, uint16_t index, Matrix16_t * matrix);
+void transposeMatrix16(Matrix16_t * matrix, Matrix16_t * matrixTransposed);
 void printMatrix16(Matrix16_t * matrix);
 void multiplyMatrix16(Matrix16_t * m1, Matrix16_t * m2, Matrix32_t * mOut);
 void allocateMatrix32(uint16_t rows, uint16_t columns, Matrix32_t * matrix);

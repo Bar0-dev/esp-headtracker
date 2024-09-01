@@ -63,7 +63,7 @@ void preparePacket(ImuData_t data, Packet_t * packet)
     float conveted_data[NO_SENSOR][NO_AXIS];
     char buffer[MAX_SINGLE_READING_SIZE];
     convertRaw(data, conveted_data);
-    for(Sensor_t sensor = ACCEL; sensor < MAG; sensor++){
+    for(Sensor_t sensor = ACCEL; sensor < NO_SENSOR; sensor++){
         for(Axis_t axis = X_AXIS; axis<NO_AXIS; axis++){
             sprintf(buffer, "%.2f,", conveted_data[sensor][axis]);
             packet->length += strlen(buffer);
