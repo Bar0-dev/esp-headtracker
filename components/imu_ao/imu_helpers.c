@@ -40,17 +40,6 @@ static void convertRaw(ImuData_t raw, float data[NO_SENSOR][NO_AXIS])
 }
 //SLOW
 
-// void imu_log_data(ImuData_t data, Sensor_t sensor, bool convert)
-// {
-//     float data_to_show[NO_AXIS];
-//     if(convert){
-//         convertRaw(data, data_to_show, sensor);
-//         ESP_LOGI("IMU", "X: %.2f, Y: %.2f, Z: %.2f", data_to_show[0], data_to_show[1], data_to_show[2]);
-//     } else {
-//         ESP_LOGI("IMU", "X: %d, Y: %d, Z: %d", data[sensor][0], data[sensor][1], data[sensor][2]);
-//     }
-// }
-
 AxisString_t axes[] = {
     "X_AXIS",
     "Y_AXIS",
@@ -144,7 +133,6 @@ void gyroUpdateBuffer(ImuData_t read, GyroCalibrationBuffer_t * buffer)
         buffer->sums[axis] += read[GYRO][axis];
     }
     buffer->samples++;
-    ESP_LOGI("IMU-HAL", "val: %ld, sample:%d", buffer->sums[X_AXIS], buffer->samples);
 }
 
 void gyroCalculateBias(GyroCalibrationBuffer_t * buffer, GyroCalibrationData_t * data)

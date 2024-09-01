@@ -4,8 +4,6 @@
 #include "imu_hal.h"
 #include "core.h"
 
-#define MAX_MAG_CALIBRATION_SAMPLES 800 //equivalent of 8s of calibration
-
 typedef char* AxisString_t;
 
 typedef struct
