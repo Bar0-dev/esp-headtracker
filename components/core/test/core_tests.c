@@ -111,3 +111,61 @@ TEST_CASE("When transposing matrix16_t", "transposeMatrix16 unit test"){
     freeMatrix16(&mOut);
     freeMatrix16(&mExpected);
 }
+
+TEST_CASE("When calculating determinant matrix16_t with expected deteminant 0", "determinantMatrix16 unit test"){
+    Matrix16_t m1;
+    uint16_t rows = 3;
+    uint16_t columns = 3;
+    allocateMatrix16(rows, columns, &m1);
+    int16_t expectedDeterminant = 0;
+    int16_t row1[] = {1, 2, 3};
+    for(uint16_t row = 0; row < m1.numOfRows; row++){
+        addRowMatrix16(row1, row, &m1);
+    }
+    
+    int16_t determinant = determinant3x3Matrix16(&m1);
+
+    TEST_ASSERT_EQUAL_INT16( expectedDeterminant, determinant );
+    freeMatrix16(&m1);
+}
+
+TEST_CASE("When calculating minor matrix16_t", "minorOf3x3Matrix16 unit test"){
+    Matrix16_t m1;
+    uint16_t rows = 3;
+    uint16_t columns = 3;
+    allocateMatrix16(rows, columns, &m1);
+    int16_t expectedMinor = -16;
+    int16_t row1[] = {1, 2, 3};
+    int16_t row2[] = {3, 4, 5};
+    int16_t row3[] = {5, 4, 3};
+    addRowMatrix16(row1, 0, &m1);
+    addRowMatrix16(row2, 1, &m1);
+    addRowMatrix16(row3, 2, &m1);
+    
+    int16_t minor = minorOf3x3Matrix16(0, 1, &m1);
+
+    TEST_ASSERT_EQUAL_INT16( expectedMinor, minor );
+    freeMatrix16(&m1);
+}
+
+TEST_CASE("When calculating sclaed inverse matrix16_t", "scaledInverse3x3Matrix16 unit test"){
+    Matrix16_t m1;
+    Matrix16_t mInverse;
+    uint16_t rows = 3;
+    uint16_t columns = 3;
+    allocateMatrix16(rows, columns, &m1);
+    int16_t row1[] = {1, 2, 3};
+    int16_t row2[] = {10, 4, 5};
+    int16_t row3[] = {5, 4, 3};
+    addRowMatrix16(row1, 0, &m1);
+    addRowMatrix16(row2, 1, &m1);
+    addRowMatrix16(row3, 2, &m1);
+    int16_t rowExpected1[] = {-8*INVERSE_MATRIX_SCALER/42, 6*INVERSE_MATRIX_SCALER/42, -2*INVERSE_MATRIX_SCALER/42};
+
+    scaledInverse3x3Matrix16(&m1, &mInverse);
+    // TEST_ASSERT_EQUAL_INT16_ARRAY( rowExpected1, mInverse.m[0], mInverse.numOfCols );
+    printMatrix16(&mInverse);
+
+    freeMatrix16(&m1);
+    freeMatrix16(&mInverse);
+}
