@@ -21,8 +21,7 @@ typedef struct
 
 typedef struct
 {
-    Vector16_t bias;
-    Vector16_t transformMatrix[NO_AXIS];
+    Matrix16_t * transformMatrix;
     bool completed;
 } MagCalibrationData_t;
 
@@ -62,5 +61,7 @@ void gyroBufferClear(GyroCalibrationBuffer_t * buffer);
 void gyroUpdateBuffer(ImuData_t read, GyroCalibrationBuffer_t * buffer);
 void gyroCalculateBias(GyroCalibrationBuffer_t * buffer, GyroCalibrationData_t * data);
 void gyroApplyBias(ImuData_t output, GyroCalibrationData_t * data);
+void loadMagTransformationMatrix(MagCalibrationData_t * data);
+void magApplyTransformMatrix(ImuData_t output, MagCalibrationData_t * data);
 
 #endif

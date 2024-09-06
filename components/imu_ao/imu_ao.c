@@ -25,6 +25,7 @@ State Imu_top(Imu * const me, Event const * const e)
         //load offsets from nvs if they exist
         get_accel_scale_and_bias(me->calibration.accel.scale, me->calibration.accel.bias);
         get_gyro_bias(me->calibration.gyro.bias);
+        loadMagTransformationMatrix(&me->calibration.mag);
         status = HANDLED_STATUS;
         break;
 
@@ -110,6 +111,7 @@ State Imu_read(Imu * const me, Event const * const e)
         imu_read(read);
         accelApplyBiasAndScale(read, &me->calibration.accel);
         gyroApplyBias(read, &me->calibration.gyro);
+        magApplyTransformMatrix(read, &me->calibration.mag);
         preparePacket(read, &packet);
         evt.sig = EV_IMU_SEND_DATA;
         evt.payload = &packet;
