@@ -1,4 +1,5 @@
 #include "imu_helpers.h"
+#include "core.h"
 #include <string.h>
 
 // SLOW!!
@@ -52,6 +53,20 @@ void calibrationSetNotCompleted(CalibtrationData_t *calData) {
   calData->accel.completed = false;
   calData->gyro.completed = false;
   calData->mag.completed = false;
+}
+
+void prepareRawPacket(ImuData_t data, Packet_t *packet) {
+  char buffer[MAX_SINGLE_READING_SIZE];
+  // for (Sensor_t sensor = ACCEL; sensor < NO_SENSOR; sensor++) {
+  for (Sensor_t sensor = ACCEL; sensor < NO_SENSOR; sensor++) {
+    for (Axis_t axis = X_AXIS; axis < NO_AXIS; axis++) {
+      sprintf(buffer, "%d,", data[sensor][axis]);
+      packet->length += strlen(buffer);
+      strcat(packet->payload, buffer);
+    }
+  }
+  strcat(packet->payload, "\n");
+  packet->length++;
 }
 
 void preparePacket(ImuData_t data, Packet_t *packet) {
@@ -165,21 +180,24 @@ void loadMagTransformationMatrix(MagCalibrationData_t *data) {
 }
 
 void magApplyTransformMatrix(ImuData_t output, MagCalibrationData_t *data) {
+  Vector16_t biasVector = {-50, -33, 18};
+  for (Axis_t axis = X_AXIS; axis < NO_AXIS; axis++) {
+    output[MAG][axis] = output[MAG][axis] - biasVector[axis];
+  }
   Matrix16_t transformMatrix;
   allocateMatrix16(3, 3, &transformMatrix);
   int16_t transformScalers[3][3] = {
-      {367, -358, 826}, {848, -446, -570}, {-560, -890, -137}};
+      {5408, -1988, 8574}, {6883, -5071, -5646}, {-4829, -8195, 148}};
   for (uint8_t row = 0; row < 3; row++) {
     addRowMatrix16(transformScalers[row], row, &transformMatrix);
   }
-  printMatrix16(data->transformMatrix);
   Matrix16_t magReadVector;
   Matrix32_t outputVector;
   allocateMatrix16(1, 3, &magReadVector);
   addRowMatrix16(output[MAG], 0, &magReadVector);
   multiplyMatrix16(&magReadVector, &transformMatrix, &outputVector);
-  for (uint8_t row = 0; row < outputVector.numOfRows; row++) {
-    output[MAG][row] = outputVector.m[row][0] / INVERSE_MATRIX_SCALER;
+  for (uint8_t column = 0; column < outputVector.numOfCols; column++) {
+    output[MAG][column] = outputVector.m[0][column] / INVERSE_MATRIX_SCALER;
   }
   freeMatrix16(&transformMatrix);
   freeMatrix16(&magReadVector);
