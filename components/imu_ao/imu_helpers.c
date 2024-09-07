@@ -10,7 +10,7 @@ static float map_int16_to_range(int16_t value, int16_t range) {
 // SLOW!!
 
 // SLOW
-static void convertRaw(ImuData_t raw, float data[NO_SENSOR][NO_AXIS]) {
+void convertRaw(ImuData_t raw, float data[NO_SENSOR][NO_AXIS]) {
   uint16_t range;
   for (Sensor_t sensor = ACCEL; sensor < NO_SENSOR; sensor++) {
     switch (sensor) {

@@ -1,6 +1,7 @@
 #include "core.h"
 #include "imu_ao.h"
 #include "unity.h"
+#include <stdint.h>
 
 TEST_CASE("When accel buffer is cleared", "accelBufferClear unit test") {
   AccelCalibrationBuffer_t buffer;
@@ -145,4 +146,32 @@ TEST_CASE("When mag read transformed with matrix",
   Vector16_t testTransformed = {35, -47, 48};
   magApplyTransformMatrix(read, &data);
   TEST_ASSERT_EQUAL_INT16_ARRAY(testTransformed, read[MAG], NO_AXIS);
+}
+
+TEST_CASE("When mag raw read is converted", "convertRaw unit test") {
+  uint8_t accelRange = imu_get_accel_range();
+  uint16_t gyroRange = imu_get_gyro_range();
+  uint16_t magRange = imu_get_mag_range();
+
+  int16_t accel1G = INT16_MAX / accelRange;
+  int16_t gyro1DPS = INT16_MAX / gyroRange;
+  int16_t mag1UT = 32760 / magRange;
+  ImuData_t read = {{accel1G, -accel1G, accel1G},
+                    {gyro1DPS, -gyro1DPS, gyro1DPS},
+                    {mag1UT, -mag1UT, mag1UT}};
+  float converted[NO_SENSOR][NO_AXIS];
+  float expected[NO_SENSOR][NO_AXIS] = {
+      {1.0, -1.0, 1.0},
+      {1.0, -1.0, 1.0},
+      {1.0, -1.0, 1.0},
+  };
+  convertRaw(read, converted);
+  for (Sensor_t sensor = ACCEL; sensor < NO_SENSOR; sensor++) {
+    for (Axis_t axis = X_AXIS; axis < NO_AXIS; axis++) {
+      ESP_LOGI("Sensor, Axis, expected, converted", "%d, %d, %f, %f", sensor,
+               axis, expected[sensor][axis], converted[sensor][axis]);
+      TEST_ASSERT_EQUAL_FLOAT(expected[sensor][axis],
+                              roundf(converted[sensor][axis]));
+    }
+  }
 }

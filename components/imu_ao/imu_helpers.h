@@ -43,6 +43,7 @@ typedef struct {
   Vector16_t stored[MAX_MAG_CALIBRATION_SAMPLES];
 } MagCalibrationBuffe_t;
 
+void convertRaw(ImuData_t raw, float data[NO_SENSOR][NO_AXIS]);
 void calibrationSetNotCompleted(CalibtrationData_t *calData);
 void getAxisName(Axis_t axis, AxisString_t axisString);
 void prepareRawPacket(ImuData_t data, Packet_t *packet);
