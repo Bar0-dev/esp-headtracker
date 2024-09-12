@@ -1,4 +1,4 @@
-#define MPU9250_SENSOR_ADDR 0x68        /*!< Slave address of the MPU9250 sensor */
+#define MPU9250_SENSOR_ADDR 0x68 /*!< Slave address of the MPU9250 sensor */
 
 #define SELF_TEST_X_GYRO 0x0
 #define SELF_TEST_Y_GYRO 0x1
@@ -101,204 +101,195 @@
 #define ZA_OFFSET_H 0x7D
 #define ZA_OFFSET_L 0x7E
 
-typedef uint8_t SampleDiv_t;
+typedef enum { DLPF_CFG, EXT_SYNC_SET = 3, FIFO_MODE = 6 } ConfigReg_t;
 
-#define FSYNC_OFFSET                3
-#define FIFO_MODE_OFFSET 6
-typedef enum 
-{
-    NO_OVERFLOW,
-    ALLOW_OVERFLOW
-} FifoModeConf_t;
-typedef enum
-{
-    DLPF_250Hz,
-    DLPF_184Hz,
-    DLPF_92Hz,
-    DLPF_41Hz,
-    DLPF_20Hz,
-    DLPF_10Hz,
-    DLPF_5Hz,
-    DLPF_3600Hz,
+typedef enum { NO_OVERFLOW, ALLOW_OVERFLOW } FifoModeConf_t;
+typedef enum {
+  DLPF_250Hz,
+  DLPF_184Hz,
+  DLPF_92Hz,
+  DLPF_41Hz,
+  DLPF_20Hz,
+  DLPF_10Hz,
+  DLPF_5Hz,
+  DLPF_3600Hz,
 } DlpfConf_t;
-typedef enum
-{
-    FSYNC_DISABLED,
-    FSYNC_TEMP_OUT,
-    FSYNC_GYRO_XOUT,
-    FSYNC_GYRO_YOUT,
-    FSYNC_GYRO_ZOUT,
-    FSYNC_ACCEL_XOUT,
-    FSYNC_ACCEL_YOUT,
-    FSYNC_ACCEL_ZOUT,
+
+typedef enum {
+  FSYNC_DISABLED,
+  FSYNC_TEMP_OUT,
+  FSYNC_GYRO_XOUT,
+  FSYNC_GYRO_YOUT,
+  FSYNC_GYRO_ZOUT,
+  FSYNC_ACCEL_XOUT,
+  FSYNC_ACCEL_YOUT,
+  FSYNC_ACCEL_ZOUT,
 } FSyncConf_t;
 
-/**
- * @todo add slef test offset and enums for GYRO_CONFIG
-*/
+typedef enum {
+  GYRO_FCHOICE_B,
+  GYRO_FS_SEL = 3,
+  ZGYRO_SELF_TEST = 5,
+  YGYRO_SELF_TEST,
+  XGYRO_SELF_TEST,
+} GyroConf_t;
 
-#define GYRO_FS_SEL_OFFSET     3
-typedef enum
-{
-    GYRO_250DPS,
-    GYRO_500DPS,
-    GYRO_1000DPS,
-    GYRO_2000DPS,
+typedef enum {
+  GYRO_250DPS,
+  GYRO_500DPS,
+  GYRO_1000DPS,
+  GYRO_2000DPS,
 } GyroRangeConf_t;
 
-typedef enum
-{
-    FCHOICE_B_DISABLED,
-    FCHOICE_B_8800Hz,
-    FCHOICE_B_3600Hz,
-} FChoiceBConf_t;
-	
-/**
- * @todo add slef test offset and enums for ACCEL_CONFIG
-*/
+typedef enum {
+  GYRO_FCHOICE_B_DISABLED,
+  GYRO_FCHOICE_B_8800Hz,
+  GYRO_FCHOICE_B_3600Hz,
+} GyroFChoiceBConf_t;
 
-#define ACCEL_FS_SEL_OFFSET     3
-typedef enum
-{
-    ACCEL_2G,
-    ACCEL_4G,
-    ACCEL_8G,
-    ACCEL_16G,
+typedef enum {
+  ACCEL_FS_SEL = 3,
+  ACCEL_SELF_TEST_Z = 5,
+  ACCEL_SELF_TEST_Y,
+  ACCEL_SELF_TEST_X,
+} AccelConfig_t;
+
+typedef enum {
+  A_DLPFCFG,
+  ACCEL_FCHOICE_B = 3,
+} AccelConfig2_t;
+
+typedef enum {
+  ACCEL_2G,
+  ACCEL_4G,
+  ACCEL_8G,
+  ACCEL_16G,
 } AccelRangeConf_t;
 
-#define ACCEL_FCHOICE_B_OFFSET 3
-typedef enum 
-{
-   ACCEL_FCHOICE_B_DISABLED,
-   ACCEL_FCHOICE_B_ENABLED,
+typedef enum {
+  ACCEL_FCHOICE_B_DISABLED,
+  ACCEL_FCHOICE_B_ENABLED,
 } AccelFChoiceBConf_t;
 
-typedef enum
-{
-    ACCEL_DLPF_218p1Hz,
-    ACCEL_DLPF_218p11Hz,
-    ACCEL_DLPF_99Hz,
-    ACCEL_DLPF_44p8Hz,
-    ACCEL_DLPF_21p2Hz,
-    ACCEL_DLPF_10p2Hz,
-    ACCEL_DLPF_5p05Hz,
-    ACCEL_DLPF_420Hz,
+typedef enum {
+  ACCEL_DLPF_218p1Hz,
+  ACCEL_DLPF_218p11Hz,
+  ACCEL_DLPF_99Hz,
+  ACCEL_DLPF_44p8Hz,
+  ACCEL_DLPF_21p2Hz,
+  ACCEL_DLPF_10p2Hz,
+  ACCEL_DLPF_5p05Hz,
+  ACCEL_DLPF_420Hz,
 } AccelDlpfConf_t;
 
-typedef uint8_t FifoEn_t;
-typedef enum
-{
-SLV0_FIFO_EN,
-SLV1_FIFO_EN,
-SLV2_FIFO_EN,
-ACCEL_FIFO_EN,
-ZG_FIFO_EN,
-YG_FIFO_EN,
-XG_FIFO_EN,
-TEMP_FIFO_EN,
+typedef enum {
+  SLV0_FIFO_EN,
+  SLV1_FIFO_EN,
+  SLV2_FIFO_EN,
+  ACCEL_FIFO_EN,
+  ZG_FIFO_EN,
+  YG_FIFO_EN,
+  XG_FIFO_EN,
+  TEMP_FIFO_EN,
 } FifoEnOffsets_t;
 
-typedef uint8_t IntPinCfg_t;
-typedef enum
-{
-    I2C_BYPASS_EN = 1,
-    FSYNC_INT_MODE_EN,
-    ACTL_FSYNC,
-    INT_ANYRD_2CLEAR,
-    LATCH_INT_EN,
-    INT_OPEN,
-    ACTL,
+typedef enum {
+  I2C_BYPASS_EN = 1,
+  FSYNC_INT_MODE_EN,
+  ACTL_FSYNC,
+  INT_ANYRD_2CLEAR,
+  LATCH_INT_EN,
+  INT_OPEN,
+  ACTL,
 } IntPinCfgOffsets_t;
 
-typedef uint8_t IntPinEnable_t;
-typedef enum
-{
-DATA_RDY_EN,
-I2C_MST_INT_EN = 3,
-FIFO_OFLOW_EN,
+typedef enum {
+  DATA_RDY_EN,
+  I2C_MST_INT_EN = 3,
+  FIFO_OFLOW_EN,
 } IntEnable_t;
 
-
-typedef enum
-{
-    DATA_RDY_INT,
-    I2C_MST_INT = 3,
-    FIFO_OFLOW_INT = 4,
+typedef enum {
+  DATA_RDY_INT,
+  I2C_MST_INT = 3,
+  FIFO_OFLOW_INT = 4,
 } InterruptStatus_t;
 
-typedef uint8_t PwrMgmt_t;
-typedef enum
-{
-    CLKSEL,
-    TEMP_DIS = 3,
-    CYCLE = 5,
-    SLEEP,
-    DEVICE_RESET,
+typedef enum {
+  CLKSEL,
+  TEMP_DIS = 3,
+  CYCLE = 5,
+  SLEEP,
+  DEVICE_RESET,
 } PwrMgmtOffsets_t;
-typedef enum
-{
-    INTERNAL_CLK,
-    PPL_X_CLK,
-    PPL_Y_CLK,
-    PPL_Z_CLK,
-    PPL_EX_32kHz,
-    PPL_EX_19MHz,
-    RESET_CLK = 7,
+
+#define I2C_SLV0_RNW 7
+
+typedef enum {
+  INTERNAL_CLK,
+  PPL_X_CLK,
+  PPL_Y_CLK,
+  PPL_Z_CLK,
+  PPL_EX_32kHz,
+  PPL_EX_19MHz,
+  RESET_CLK = 7,
 } ClkSrc_t;
 
-typedef enum
-{
-    ACCEL_XOUT_H_OFFSET,
-    ACCEL_XOUT_L_OFFSET,
-    ACCEL_YOUT_H_OFFSET,
-    ACCEL_YOUT_L_OFFSET,
-    ACCEL_ZOUT_H_OFFSET,
-    ACCEL_ZOUT_L_OFFSET,
-    TEMP_OUT_H_OFFSET,
-    TEMP_OUT_L_OFFSET,
-    GYRO_XOUT_H_OFFSET,
-    GYRO_XOUT_L_OFFSET,
-    GYRO_YOUT_H_OFFSET,
-    GYRO_YOUT_L_OFFSET,
-    GYRO_ZOUT_H_OFFSET,
-    GYRO_ZOUT_L_OFFSET,
+typedef enum {
+  ACCEL_XOUT_H_OFFSET,
+  ACCEL_XOUT_L_OFFSET,
+  ACCEL_YOUT_H_OFFSET,
+  ACCEL_YOUT_L_OFFSET,
+  ACCEL_ZOUT_H_OFFSET,
+  ACCEL_ZOUT_L_OFFSET,
+  TEMP_OUT_H_OFFSET,
+  TEMP_OUT_L_OFFSET,
+  GYRO_XOUT_H_OFFSET,
+  GYRO_XOUT_L_OFFSET,
+  GYRO_YOUT_H_OFFSET,
+  GYRO_YOUT_L_OFFSET,
+  GYRO_ZOUT_H_OFFSET,
+  GYRO_ZOUT_L_OFFSET,
 } DataOffsets_t;
 
-//Magnetometer registers
-#define AK8362_SENSOR_ADDR 0x0C         /*!< Slave address of the AK8362 sensor */
+enum {
+  I2C_SLV0_LENG,
+  I2C_SLV0_GRP = 4,
+  I2C_SLV0_REG_DIS,
+  I2C_SLV0_BYTE_SW,
+  I2C_SLV0_EN,
+};
+
+// Magnetometer registers
+#define AK8362_SENSOR_ADDR 0x0C /*!< Slave address of the AK8362 sensor */
 #define AK8362_WHO_AM_I 0x00
 #define AK8362_MAG_DATA 0x03
 #define AK8362_CONTROL_1 0x0A
 #define AK8362_STATUS_1 0x02
 #define AK8362_STATUS_2 0x09
 
-typedef enum
-{
-    MAG_XOUT_L_OFFSET,
-    MAG_XOUT_H_OFFSET,
-    MAG_YOUT_L_OFFSET,
-    MAG_YOUT_H_OFFSET,
-    MAG_ZOUT_L_OFFSET,
-    MAG_ZOUT_H_OFFSET,
+typedef enum {
+  MAG_XOUT_L_OFFSET,
+  MAG_XOUT_H_OFFSET,
+  MAG_YOUT_L_OFFSET,
+  MAG_YOUT_H_OFFSET,
+  MAG_ZOUT_L_OFFSET,
+  MAG_ZOUT_H_OFFSET,
 } MagDataOffsets_t;
 
-typedef uint8_t MagControlConf_t;
-
-typedef enum
-{
-    MAG_OUTPUT_MODE,
-    MAG_OUTPUT_WIDTH = 4,
+typedef enum {
+  MAG_OUTPUT_MODE,
+  MAG_OUTPUT_WIDTH = 4,
 } MagControlOffsets_t;
 
-typedef enum
-{
-    POWER_DOWN_MODE = 0,
-    SINGLE_MEASUREMENT_MODE = 0b1,
-    COUNTINIOUS_MODE_1 = 0b0010,
-    COUNTINIOUS_MODE_2 = 0b0110,
-    EXTERNAL_TRIGGER_MODE = 0b0100,
-    SELF_TEST_MODE = 0b1000,
-    FUSE_ROM_MODE = 0b01111,
+typedef enum {
+  POWER_DOWN_MODE = 0,
+  SINGLE_MEASUREMENT_MODE = 0b1,
+  COUNTINIOUS_MODE_1 = 0b0010,
+  COUNTINIOUS_MODE_2 = 0b0110,
+  EXTERNAL_TRIGGER_MODE = 0b0100,
+  SELF_TEST_MODE = 0b1000,
+  FUSE_ROM_MODE = 0b01111,
 } MagOperationMode_t;
 
 #define AK8362_MAX_RANGE 4912
