@@ -260,6 +260,34 @@ enum {
   I2C_SLV0_EN,
 };
 
+enum {
+  SIG_COND_RST,
+  I2C_MST_RST,
+  FIFO_RST,
+  I2C_IF_DIS = 4,
+  I2C_MST_EN,
+  FIFO_EN_UC,
+};
+
+enum {
+  I2C_MST_CLK_348kHz,
+  I2C_MST_CLK_333kHz,
+  I2C_MST_CLK_320kHz,
+  I2C_MST_CLK_308kHz,
+  I2C_MST_CLK_296kHz,
+  I2C_MST_CLK_286kHz,
+  I2C_MST_CLK_276kHz,
+  I2C_MST_CLK_267kHz,
+  I2C_MST_CLK_258kHz,
+  I2C_MST_CLK_500kHz,
+  I2C_MST_CLK_471kHz,
+  I2C_MST_CLK_444kHz,
+  I2C_MST_CLK_421kHz,
+  I2C_MST_CLK_400kHz,
+  I2C_MST_CLK_381kHz,
+  I2C_MST_CLK_364kHz
+};
+
 // Magnetometer registers
 #define AK8362_SENSOR_ADDR 0x0C /*!< Slave address of the AK8362 sensor */
 #define AK8362_WHO_AM_I 0x00
