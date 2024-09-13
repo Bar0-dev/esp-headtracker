@@ -110,16 +110,9 @@ void imu_config() {
   set_and_check_config_arr(MPU9250_SENSOR_ADDR, mpu_conf_2, sizeof(mpu_conf_2));
 }
 
-void imu_hal_init() {
-  i2c_master_init();
-  imu_config();
+static void imu_deinit(void) {
+  ESP_ERROR_CHECK(i2c_driver_delete(I2C_MASTER_NUM));
 }
-
-// UNUSED FUNC
-//  static void imu_deinit(void)
-//  {
-//      ESP_ERROR_CHECK(i2c_driver_delete(I2C_MASTER_NUM));
-//  }
 
 // static void imu_reset(void)
 // {
@@ -127,18 +120,23 @@ void imu_hal_init() {
 //     1 << DEVICE_RESET));
 // }
 
-// static uint8_t imu_who_am_i(uint8_t device_addr)
-// {
-//     uint8_t data;
-//     esp_err_t ret;
-//     if(device_addr == MPU9250_SENSOR_ADDR){
-//         ret = imu_register_read(device_addr, WHO_AM_I, &data, 1);
-//     } else {
-//         ret = imu_register_read(device_addr, AK8362_WHO_AM_I, &data, 1);
-//     }
-//     ESP_ERROR_CHECK(ret);
-//     return data;
+// static uint8_t imu_who_am_i(uint8_t device_addr) {
+//   uint8_t data;
+//   esp_err_t ret;
+//   if (device_addr == MPU9250_SENSOR_ADDR) {
+//     ret = imu_register_read(device_addr, WHO_AM_I, &data, 1);
+//   } else {
+//     ret = imu_register_read(device_addr, AK8362_WHO_AM_I, &data, 1);
+//   }
+//   ESP_ERROR_CHECK(ret);
+//   return data;
 // }
+
+void imu_hal_init() {
+  i2c_master_init();
+  imu_config();
+  imu_deinit();
+}
 
 static void mag_read(ImuData_t data) {
   uint8_t buffer[6];
