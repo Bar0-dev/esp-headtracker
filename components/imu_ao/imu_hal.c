@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <stdint.h>
 
-static const Config_t imu_conf[] = {
+static const Config_t mpu_conf[] = {
     {SMPLRT_DIV, 0},
     {CONFIG, (ALLOW_OVERFLOW << FIFO_MODE) | (FSYNC_DISABLED << EXT_SYNC_SET) |
                  (DLPF_20Hz << DLPF_CFG)},
@@ -35,13 +35,14 @@ static const Config_t imu_conf[] = {
     {PWR_MGMT_1, 0},
     {PWR_MGMT_2, 0}};
 
+static const Config_t mag_conf = {AK8362_CONTROL_1,
+                                  (COUNTINIOUS_MODE_2 << MAG_OUTPUT_MODE) |
+                                      (1 << MAG_OUTPUT_WIDTH)};
+
 static const uint8_t accelRange[ACCEL_16G + 1] = {2, 4, 8, 16};
 static const uint16_t gyroRange[GYRO_2000DPS + 1] = {250, 500, 1000, 2000};
 static const uint16_t magRange = AK8362_MAX_RANGE;
 
-/**
- * @brief Read a accelCalAxis of bytes from a MPU9250 sensor registers
- */
 static esp_err_t imu_register_read(uint8_t device_addr, uint8_t reg_addr,
                                    uint8_t *data, size_t len) {
   return i2c_master_write_read_device(
@@ -49,9 +50,6 @@ static esp_err_t imu_register_read(uint8_t device_addr, uint8_t reg_addr,
       I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 }
 
-/**
- * @brief Write a byte to a MPU9250 sensor register
- */
 static esp_err_t imu_register_write_byte(uint8_t device_addr, uint8_t reg_addr,
                                          uint8_t data) {
   esp_err_t ret;
@@ -64,9 +62,6 @@ static esp_err_t imu_register_write_byte(uint8_t device_addr, uint8_t reg_addr,
   return ret;
 }
 
-/**
- * @brief i2c master initialization
- */
 static void i2c_master_init(void) {
   int i2c_master_port = I2C_MASTER_NUM;
 
@@ -88,21 +83,29 @@ static void i2c_master_init(void) {
 }
 
 void imu_config() {
-  for (uint8_t index = 0; index < sizeof(imu_conf) / sizeof(Config_t);
+  esp_err_t ret;
+  for (uint8_t index = 0; index < sizeof(mpu_conf) / sizeof(Config_t);
        index++) {
-    esp_err_t ret =
-        imu_register_write_byte(MPU9250_SENSOR_ADDR, imu_conf[index].conf_reg,
-                                imu_conf[index].config_byte);
+    ret = imu_register_write_byte(MPU9250_SENSOR_ADDR, mpu_conf[index].conf_reg,
+                                  mpu_conf[index].config_byte);
     ESP_ERROR_CHECK(ret);
   }
+  ret = imu_register_write_byte(AK8362_SENSOR_ADDR, mag_conf.conf_reg,
+                                mag_conf.config_byte);
+  ESP_ERROR_CHECK(ret);
   uint8_t readSetting;
-  for (uint8_t index = 0; index < sizeof(imu_conf) / sizeof(Config_t);
+  for (uint8_t index = 0; index < sizeof(mpu_conf) / sizeof(Config_t);
        index++) {
-    esp_err_t ret = imu_register_read(
-        MPU9250_SENSOR_ADDR, imu_conf[index].conf_reg, &readSetting, 1);
+    ret = imu_register_read(MPU9250_SENSOR_ADDR, mpu_conf[index].conf_reg,
+                            &readSetting, 1);
     ESP_ERROR_CHECK(ret);
-    assert(readSetting == imu_conf[index].config_byte);
+    assert(readSetting == mpu_conf[index].config_byte);
   }
+
+  ret =
+      imu_register_read(AK8362_SENSOR_ADDR, mag_conf.conf_reg, &readSetting, 1);
+  ESP_ERROR_CHECK(ret);
+  assert(readSetting == mag_conf.config_byte);
 }
 
 void imu_hal_init() {

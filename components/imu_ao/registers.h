@@ -265,6 +265,7 @@ enum {
 #define AK8362_WHO_AM_I 0x00
 #define AK8362_MAG_DATA 0x03
 #define AK8362_CONTROL_1 0x0A
+#define AK8362_CONTROL_2 0x0B
 #define AK8362_STATUS_1 0x02
 #define AK8362_STATUS_2 0x09
 
