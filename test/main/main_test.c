@@ -29,6 +29,7 @@ void app_main(void) {
   print_banner("Running tests with [mpuConf] tag");
   UNITY_BEGIN();
   unity_run_tests_by_tag("[mpuConf]", false);
+  unity_run_tests_by_tag("[perf]", false);
   UNITY_END();
 
   // print_banner("Running tests without [fails] tag");

@@ -2,7 +2,7 @@
 #include "esp_log.h"
 #include <assert.h>
 
-static char *TAG = 'SPI_BUS';
+static char *TAG = "SPI_BUS";
 
 static spi_device_handle_t mpu_spi;
 

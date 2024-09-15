@@ -6,7 +6,6 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
 
 const char *TAG = "IMU_HAL";
 
@@ -105,49 +104,52 @@ static void i2c_set_and_check_config_arr(uint8_t sensorAddr,
   mpu_i2c_bus_deinit();
 }
 
+static void IRAM_ATTR interrupt_handler(void *arg) {
+  // Event evt = {.sig = EV_IMU_HAL_BUFFER_READING, .payload = (void *)0};
+  // Active_postFromISR(AO_Broker, &evt);
+}
+
+void imu_enable_interrupt() { gpio_intr_enable(MPU_INT_PIN); }
+void imu_disable_interrupt() { gpio_intr_disable(MPU_INT_PIN); }
+
+static void imu_int_pin_config() {
+  static const gpio_config_t intPinGpioConf = {
+      .pin_bit_mask = (1ULL << MPU_INT_PIN),
+      .mode = GPIO_MODE_INPUT,
+      .pull_up_en = GPIO_PULLUP_DISABLE,
+      .pull_down_en = GPIO_PULLDOWN_ENABLE,
+      .intr_type = GPIO_INTR_POSEDGE,
+  };
+
+  gpio_config(&intPinGpioConf);
+  gpio_install_isr_service(0);
+  gpio_isr_handler_add(MPU_INT_PIN, interrupt_handler, (void *)0);
+  imu_disable_interrupt();
+}
+
 void imu_hal_init() {
   spi_set_and_check_config_arr(mpu_conf_1, sizeof(mpu_conf_1));
   i2c_set_and_check_config_arr(AK8362_SENSOR_ADDR, mag_conf, sizeof(mag_conf));
   spi_set_and_check_config_arr(mpu_conf_2, sizeof(mpu_conf_2));
   mpu_spi_bus_init();
+  imu_int_pin_config();
 }
 
-// static void mag_read(ImuData_t data) {
-//   uint8_t buffer[6];
-//   uint8_t overflow = 0;
-//   ESP_ERROR_CHECK(
-//       imu_register_read(AK8362_SENSOR_ADDR, AK8362_STATUS_1, &overflow, 1));
-//   ESP_ERROR_CHECK(
-//       imu_register_read(AK8362_SENSOR_ADDR, AK8362_MAG_DATA, buffer, 6));
-//   data[MAG][X_AXIS] =
-//       ((int16_t)buffer[MAG_XOUT_H_OFFSET] << 8) | buffer[MAG_XOUT_L_OFFSET];
-//   data[MAG][Y_AXIS] =
-//       ((int16_t)buffer[MAG_YOUT_H_OFFSET] << 8) | buffer[MAG_YOUT_L_OFFSET];
-//   data[MAG][Z_AXIS] =
-//       ((int16_t)buffer[MAG_ZOUT_H_OFFSET] << 8) | buffer[MAG_ZOUT_L_OFFSET];
-//   ESP_ERROR_CHECK(
-//       imu_register_read(AK8362_SENSOR_ADDR, AK8362_STATUS_2, &overflow, 1));
-// }
-//
-// void imu_read(ImuData_t data) {
-//   DataOffsets_t offset = ACCEL_XOUT_H_OFFSET;
-//   uint8_t bufferSize = GYRO_ZOUT_L_OFFSET + 1;
-//   uint8_t buffer[bufferSize];
-//   ESP_ERROR_CHECK(
-//       imu_register_read(MPU9250_SENSOR_ADDR, ACCEL_XOUT_H, buffer,
-//       bufferSize));
-//   for (uint8_t sensor = ACCEL; sensor <= GYRO; sensor++) {
-//     if (sensor == GYRO) {
-//       offset = GYRO_XOUT_H_OFFSET;
-//     }
-//     for (uint8_t axis = X_AXIS; axis < NO_AXIS; axis++) {
-//       data[sensor][axis] = ((int16_t)buffer[2 * axis + offset] << 8) |
-//                            buffer[2 * axis + offset + 1];
-//     }
-//   }
-//   mag_read(data);
-//   return;
-// }
+void imu_read(ImuData_t data) {
+  DataOffsets_t offset = ACCEL_XOUT_H_OFFSET;
+  uint8_t bufferSize = MAG_ZOUT_L_OFFSET + 1;
+  uint8_t buffer[bufferSize];
+  mpu_spi_read_bytes(ACCEL_XOUT_H, buffer, bufferSize);
+  for (uint8_t sensor = ACCEL; sensor < NO_SENSOR; sensor++) {
+    if (sensor == GYRO) {
+      offset = GYRO_XOUT_H_OFFSET;
+    }
+    for (uint8_t axis = X_AXIS; axis < NO_AXIS; axis++) {
+      data[sensor][axis] = ((int16_t)buffer[2 * axis + offset] << 8) |
+                           buffer[2 * axis + offset + 1];
+    }
+  }
+}
 
 uint8_t imu_get_accel_range() { return accelRange[ACCEL_RANGE_SETTING]; }
 

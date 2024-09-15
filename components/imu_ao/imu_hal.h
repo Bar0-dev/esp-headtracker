@@ -7,6 +7,7 @@
 
 #define ACCEL_RANGE_SETTING ACCEL_2G
 #define GYRO_RANGE_SETTING GYRO_500DPS
+#define MPU_INT_PIN 33
 
 typedef struct {
   uint8_t conf_reg;
