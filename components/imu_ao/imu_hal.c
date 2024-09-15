@@ -1,10 +1,14 @@
 #include "imu_hal.h"
 #include "esp_err.h"
 #include "freertos/idf_additions.h"
+#include "hal/spi_types.h"
 #include "imu_ao.h"
 #include "portmacro.h"
 #include <assert.h>
 #include <stdint.h>
+#include <string.h>
+
+const char *TAG = "MPU";
 
 static const Config_t mpu_conf_1[] = {
     {PWR_MGMT_1, 1 << DEVICE_RESET},
@@ -151,11 +155,82 @@ static void imu_switch_to_spi() {
   vTaskDelay(10 / portTICK_PERIOD_MS);
   imu_i2c_deinit();
 }
+static spi_device_handle_t spi;
 
+// Function to initialize SPI
+void spi_init() {
+  esp_err_t ret;
+  spi_bus_config_t buscfg = {
+      .miso_io_num = PIN_NUM_MISO,
+      .mosi_io_num = PIN_NUM_MOSI,
+      .sclk_io_num = PIN_NUM_CLK,
+      .quadwp_io_num = -1,
+      .quadhd_io_num = -1,
+      .max_transfer_sz = SPI_MAX_DMA_LEN,
+  };
+
+  spi_device_interface_config_t devcfg = {
+      .command_bits = 0,
+      .address_bits = 8,
+      .dummy_bits = 0,
+      .mode = 0,
+      .duty_cycle_pos = 128, // default 128 = 50%/50% duty
+      .cs_ena_pretrans = 0,  // 0 not used
+      .cs_ena_posttrans = 0, // 0 not used
+      .clock_speed_hz = 1 * 1000 * 1000,
+      .spics_io_num = PIN_NUM_CS,
+      .flags = 0, // 0 not used
+      .queue_size = 1,
+      .pre_cb = NULL,
+      .post_cb = NULL,
+  };
+
+  // Initialize the SPI bus
+  ret = spi_bus_initialize(SPI3_HOST, &buscfg, 0);
+  ESP_ERROR_CHECK(ret);
+
+  // Attach the MPU9250 to the SPI bus
+  ret = spi_bus_add_device(SPI3_HOST, &devcfg, &spi);
+  ESP_ERROR_CHECK(ret);
+
+  ESP_LOGI(TAG, "SPI initialized successfully");
+}
+
+// Function to read a register from MPU9250
+void mpu9250_read_register(uint8_t reg, uint8_t *data) {
+  spi_transaction_t transaction;
+  transaction.flags = 0;
+  transaction.cmd = 0;
+  transaction.addr = (reg | 0x80);
+  transaction.length = 8;
+  transaction.rxlength = 8;
+  transaction.user = NULL;
+  transaction.tx_buffer = NULL;
+  transaction.rx_buffer = data;
+  esp_err_t err = spi_device_transmit(spi, &transaction);
+  ESP_ERROR_CHECK(err);
+  ESP_LOGI(TAG, "Read 0x%x from register 0x%x", *data, reg);
+}
+
+// Function to check the WHO_AM_I register
+void check_who_am_i() {
+  uint8_t data;
+  // mpu9250_read_register(WHO_AM_I, &data);
+  mpu9250_read_register(WHO_AM_I, &data);
+  if (data == 0x71) {
+    ESP_LOGI(TAG, "MPU9250 WHO_AM_I check passed: 0x%x", data);
+  } else {
+    ESP_LOGE(TAG, "MPU9250 WHO_AM_I check failed: 0x%x", data);
+  }
+}
 void imu_hal_init() {
   i2c_master_init();
   imu_config();
   imu_switch_to_spi();
+  vTaskDelay(100 / portTICK_PERIOD_MS);
+  spi_init();
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  check_who_am_i();
 }
 
 static void mag_read(ImuData_t data) {
