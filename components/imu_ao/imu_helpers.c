@@ -1,7 +1,8 @@
 #include "imu_helpers.h"
 #include "core.h"
+#include "esp_log.h"
+#include <stdio.h>
 #include <string.h>
-
 // SLOW!!
 static float map_int16_to_range(int16_t value, int16_t range) {
   return ((float)value - INT16_MIN) * 2 * range / (INT16_MAX - INT16_MIN) -

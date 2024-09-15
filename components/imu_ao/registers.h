@@ -1,3 +1,6 @@
+#ifndef REGISTERS_H
+#define REGISTERS_H
+
 #define MPU9250_SENSOR_ADDR 0x68 /*!< Slave address of the MPU9250 sensor */
 
 #define SELF_TEST_X_GYRO 0x0
@@ -322,3 +325,4 @@ typedef enum {
 } MagOperationMode_t;
 
 #define AK8362_MAX_RANGE 4912
+#endif // !REGISTERS_H

@@ -3,6 +3,7 @@
 
 #include "core.h"
 #include "imu_hal.h"
+#include <stdbool.h>
 
 typedef char *AxisString_t;
 

@@ -1,14 +1,14 @@
 #include "imu_hal.h"
-#include "esp_err.h"
-#include "freertos/idf_additions.h"
-#include "hal/spi_types.h"
-#include "imu_ao.h"
-#include "portmacro.h"
+#include "esp_log.h"
+#include "imu_i2c.h"
+#include "imu_spi.h"
+#include "registers.h"
 #include <assert.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
-const char *TAG = "MPU";
+const char *TAG = "IMU_HAL";
 
 static const Config_t mpu_conf_1[] = {
     {PWR_MGMT_1, 1 << DEVICE_RESET},
@@ -38,7 +38,7 @@ static const Config_t mpu_conf_1[] = {
                       (0 << FSYNC_INT_MODE_EN) | (1 << I2C_BYPASS_EN)},
     {INT_ENABLE, (1 << DATA_RDY_EN)},
     {MOT_DETECT_CTRL, 0},
-    {USER_CTRL, 0},
+    {USER_CTRL, (0 << I2C_MST_EN) | (0 << I2C_IF_DIS)},
     {PWR_MGMT_1, 0},
     {PWR_MGMT_2, 0}};
 
@@ -49,62 +49,19 @@ static const Config_t mag_conf[] = {
 static const Config_t mpu_conf_2[] = {
     {INT_PIN_CFG, (0 << I2C_BYPASS_EN)},
     {I2C_MST_CTRL, I2C_MST_CLK_400kHz},
-    {USER_CTRL, (1 << I2C_MST_EN)},
+    {USER_CTRL, (1 << I2C_MST_EN) | (1 << I2C_IF_DIS)},
 };
 
 static const uint8_t accelRange[ACCEL_16G + 1] = {2, 4, 8, 16};
 static const uint16_t gyroRange[GYRO_2000DPS + 1] = {250, 500, 1000, 2000};
-static const uint16_t magRange = AK8362_MAX_RANGE;
 
-static esp_err_t imu_register_read(uint8_t device_addr, uint8_t reg_addr,
-                                   uint8_t *data, size_t len) {
-  return i2c_master_write_read_device(
-      I2C_MASTER_NUM, device_addr, &reg_addr, 1, data, len,
-      I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
-}
-
-static esp_err_t imu_register_write_byte(uint8_t device_addr, uint8_t reg_addr,
-                                         uint8_t data) {
-  esp_err_t ret;
-  uint8_t write_buf[2] = {reg_addr, data};
-
-  ret = i2c_master_write_to_device(I2C_MASTER_NUM, device_addr, write_buf,
-                                   sizeof(write_buf),
-                                   I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
-
-  return ret;
-}
-
-static void i2c_master_init(void) {
-  int i2c_master_port = I2C_MASTER_NUM;
-
-  i2c_config_t conf = {
-      .mode = I2C_MODE_MASTER,
-      .sda_io_num = I2C_MASTER_SDA_IO,
-      .scl_io_num = I2C_MASTER_SCL_IO,
-      .sda_pullup_en = GPIO_PULLUP_ENABLE,
-      .scl_pullup_en = GPIO_PULLUP_ENABLE,
-      .master.clk_speed = I2C_MASTER_FREQ_HZ,
-  };
-
-  i2c_param_config(i2c_master_port, &conf);
-
-  esp_err_t ret =
-      i2c_driver_install(i2c_master_port, conf.mode, I2C_MASTER_RX_BUF_DISABLE,
-                         I2C_MASTER_TX_BUF_DISABLE, 0);
-  ESP_ERROR_CHECK(ret);
-}
-
-static void set_and_check_config_arr(uint8_t sensorAddr,
-                                     Config_t const confArr[],
-                                     uint8_t arrsize) {
-  esp_err_t ret;
+static void spi_set_and_check_config_arr(Config_t const confArr[],
+                                         uint8_t arrsize) {
+  mpu_spi_bus_init();
   for (uint8_t index = 0; index < arrsize / sizeof(Config_t); index++) {
-    ret = imu_register_write_byte(sensorAddr, confArr[index].conf_reg,
-                                  confArr[index].config_byte);
-    ESP_ERROR_CHECK(ret);
-    ESP_LOGI("MPU CONFIG SET", "i:%d, reg:%d, set:%d", index,
-             confArr[index].conf_reg, confArr[index].config_byte);
+    mpu_spi_write_byte(confArr[index].conf_reg, confArr[index].config_byte);
+    ESP_LOGI(TAG, "i:%d, reg:%d, set:%d", index, confArr[index].conf_reg,
+             confArr[index].config_byte);
     vTaskDelay(10 / portTICK_PERIOD_MS);
   }
   uint8_t readSetting;
@@ -112,165 +69,88 @@ static void set_and_check_config_arr(uint8_t sensorAddr,
     if (confArr[index].conf_reg == PWR_MGMT_1) {
       continue;
     }
-    ret =
-        imu_register_read(sensorAddr, confArr[index].conf_reg, &readSetting, 1);
-    ESP_ERROR_CHECK(ret);
-    ESP_LOGI("MPU CONFIG CHECK", "i:%d, reg:%d, set:%d", index,
-             confArr[index].conf_reg, readSetting);
+    mpu_spi_read_byte(confArr[index].conf_reg, &readSetting);
+    ESP_LOGI(TAG, "i:%d, reg:%d, set:%d", index, confArr[index].conf_reg,
+             readSetting);
     vTaskDelay(10 / portTICK_PERIOD_MS);
     assert(readSetting == confArr[index].config_byte);
   }
-}
-
-void imu_config() {
-  set_and_check_config_arr(MPU9250_SENSOR_ADDR, mpu_conf_1, sizeof(mpu_conf_1));
-  set_and_check_config_arr(AK8362_SENSOR_ADDR, mag_conf, sizeof(mag_conf));
-  set_and_check_config_arr(MPU9250_SENSOR_ADDR, mpu_conf_2, sizeof(mpu_conf_2));
-}
-
-static void imu_i2c_deinit(void) {
-  ESP_ERROR_CHECK(i2c_driver_delete(I2C_MASTER_NUM));
-}
-
-// static void imu_reset(void)
-// {
-//     ESP_ERROR_CHECK(imu_register_write_byte(MPU9250_SENSOR_ADDR, PWR_MGMT_1,
-//     1 << DEVICE_RESET));
-// }
-
-static void imu_who_am_i(uint8_t device_addr) {
-  uint8_t data;
-  esp_err_t ret;
-  if (device_addr == MPU9250_SENSOR_ADDR) {
-    ret = imu_register_read(device_addr, WHO_AM_I, &data, 1);
-  } else {
-    ret = imu_register_read(device_addr, AK8362_WHO_AM_I, &data, 1);
-  }
-  ESP_ERROR_CHECK(ret);
-  ESP_LOGI("I2C WHO_AM_I", "%d", data);
-}
-
-static void imu_switch_to_spi() {
-  imu_register_write_byte(MPU9250_SENSOR_ADDR, USER_CTRL, (1 << I2C_IF_DIS));
-  vTaskDelay(10 / portTICK_PERIOD_MS);
-  imu_i2c_deinit();
-}
-static spi_device_handle_t spi;
-
-// Function to initialize SPI
-void spi_init() {
-  esp_err_t ret;
-  spi_bus_config_t buscfg = {
-      .miso_io_num = PIN_NUM_MISO,
-      .mosi_io_num = PIN_NUM_MOSI,
-      .sclk_io_num = PIN_NUM_CLK,
-      .quadwp_io_num = -1,
-      .quadhd_io_num = -1,
-      .max_transfer_sz = SPI_MAX_DMA_LEN,
-  };
-
-  spi_device_interface_config_t devcfg = {
-      .command_bits = 0,
-      .address_bits = 8,
-      .dummy_bits = 0,
-      .mode = 0,
-      .duty_cycle_pos = 128, // default 128 = 50%/50% duty
-      .cs_ena_pretrans = 0,  // 0 not used
-      .cs_ena_posttrans = 0, // 0 not used
-      .clock_speed_hz = 1 * 1000 * 1000,
-      .spics_io_num = PIN_NUM_CS,
-      .flags = 0, // 0 not used
-      .queue_size = 1,
-      .pre_cb = NULL,
-      .post_cb = NULL,
-  };
-
-  // Initialize the SPI bus
-  ret = spi_bus_initialize(SPI3_HOST, &buscfg, 0);
-  ESP_ERROR_CHECK(ret);
-
-  // Attach the MPU9250 to the SPI bus
-  ret = spi_bus_add_device(SPI3_HOST, &devcfg, &spi);
-  ESP_ERROR_CHECK(ret);
-
-  ESP_LOGI(TAG, "SPI initialized successfully");
-}
-
-// Function to read a register from MPU9250
-void mpu9250_read_register(uint8_t reg, uint8_t *data) {
-  spi_transaction_t transaction;
-  transaction.flags = 0;
-  transaction.cmd = 0;
-  transaction.addr = (reg | 0x80);
-  transaction.length = 8;
-  transaction.rxlength = 8;
-  transaction.user = NULL;
-  transaction.tx_buffer = NULL;
-  transaction.rx_buffer = data;
-  esp_err_t err = spi_device_transmit(spi, &transaction);
-  ESP_ERROR_CHECK(err);
-  ESP_LOGI(TAG, "Read 0x%x from register 0x%x", *data, reg);
-}
-
-// Function to check the WHO_AM_I register
-void check_who_am_i() {
-  uint8_t data;
-  // mpu9250_read_register(WHO_AM_I, &data);
-  mpu9250_read_register(WHO_AM_I, &data);
-  if (data == 0x71) {
-    ESP_LOGI(TAG, "MPU9250 WHO_AM_I check passed: 0x%x", data);
-  } else {
-    ESP_LOGE(TAG, "MPU9250 WHO_AM_I check failed: 0x%x", data);
-  }
-}
-void imu_hal_init() {
-  i2c_master_init();
-  imu_config();
-  imu_switch_to_spi();
   vTaskDelay(100 / portTICK_PERIOD_MS);
-  spi_init();
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
-  check_who_am_i();
+  mpu_spi_bus_deinit();
 }
 
-static void mag_read(ImuData_t data) {
-  uint8_t buffer[6];
-  uint8_t overflow = 0;
-  ESP_ERROR_CHECK(
-      imu_register_read(AK8362_SENSOR_ADDR, AK8362_STATUS_1, &overflow, 1));
-  ESP_ERROR_CHECK(
-      imu_register_read(AK8362_SENSOR_ADDR, AK8362_MAG_DATA, buffer, 6));
-  data[MAG][X_AXIS] =
-      ((int16_t)buffer[MAG_XOUT_H_OFFSET] << 8) | buffer[MAG_XOUT_L_OFFSET];
-  data[MAG][Y_AXIS] =
-      ((int16_t)buffer[MAG_YOUT_H_OFFSET] << 8) | buffer[MAG_YOUT_L_OFFSET];
-  data[MAG][Z_AXIS] =
-      ((int16_t)buffer[MAG_ZOUT_H_OFFSET] << 8) | buffer[MAG_ZOUT_L_OFFSET];
-  ESP_ERROR_CHECK(
-      imu_register_read(AK8362_SENSOR_ADDR, AK8362_STATUS_2, &overflow, 1));
-}
-
-void imu_read(ImuData_t data) {
-  DataOffsets_t offset = ACCEL_XOUT_H_OFFSET;
-  uint8_t bufferSize = GYRO_ZOUT_L_OFFSET + 1;
-  uint8_t buffer[bufferSize];
-  ESP_ERROR_CHECK(
-      imu_register_read(MPU9250_SENSOR_ADDR, ACCEL_XOUT_H, buffer, bufferSize));
-  for (uint8_t sensor = ACCEL; sensor <= GYRO; sensor++) {
-    if (sensor == GYRO) {
-      offset = GYRO_XOUT_H_OFFSET;
-    }
-    for (uint8_t axis = X_AXIS; axis < NO_AXIS; axis++) {
-      data[sensor][axis] = ((int16_t)buffer[2 * axis + offset] << 8) |
-                           buffer[2 * axis + offset + 1];
-    }
+static void i2c_set_and_check_config_arr(uint8_t sensorAddr,
+                                         Config_t const confArr[],
+                                         uint8_t arrsize) {
+  mpu_i2c_bus_init();
+  for (uint8_t index = 0; index < arrsize / sizeof(Config_t); index++) {
+    mpu_i2c_write_byte(sensorAddr, confArr[index].conf_reg,
+                       confArr[index].config_byte);
+    ESP_LOGI(TAG, "i:%d, reg:%d, set:%d", index, confArr[index].conf_reg,
+             confArr[index].config_byte);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
-  mag_read(data);
-  return;
+  uint8_t readSetting;
+  for (uint8_t index = 0; index < arrsize / sizeof(Config_t); index++) {
+    if (confArr[index].conf_reg == PWR_MGMT_1 ||
+        confArr[index].conf_reg == USER_CTRL) {
+      continue;
+    }
+    mpu_i2c_read_bytes(sensorAddr, confArr[index].conf_reg, &readSetting, 1);
+    ESP_LOGI(TAG, "i:%d, reg:%d, set:%d", index, confArr[index].conf_reg,
+             readSetting);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+    assert(readSetting == confArr[index].config_byte);
+  }
+  mpu_i2c_bus_deinit();
 }
+
+void imu_hal_init() {
+  spi_set_and_check_config_arr(mpu_conf_1, sizeof(mpu_conf_1));
+  i2c_set_and_check_config_arr(AK8362_SENSOR_ADDR, mag_conf, sizeof(mag_conf));
+  spi_set_and_check_config_arr(mpu_conf_2, sizeof(mpu_conf_2));
+  mpu_spi_bus_init();
+}
+
+// static void mag_read(ImuData_t data) {
+//   uint8_t buffer[6];
+//   uint8_t overflow = 0;
+//   ESP_ERROR_CHECK(
+//       imu_register_read(AK8362_SENSOR_ADDR, AK8362_STATUS_1, &overflow, 1));
+//   ESP_ERROR_CHECK(
+//       imu_register_read(AK8362_SENSOR_ADDR, AK8362_MAG_DATA, buffer, 6));
+//   data[MAG][X_AXIS] =
+//       ((int16_t)buffer[MAG_XOUT_H_OFFSET] << 8) | buffer[MAG_XOUT_L_OFFSET];
+//   data[MAG][Y_AXIS] =
+//       ((int16_t)buffer[MAG_YOUT_H_OFFSET] << 8) | buffer[MAG_YOUT_L_OFFSET];
+//   data[MAG][Z_AXIS] =
+//       ((int16_t)buffer[MAG_ZOUT_H_OFFSET] << 8) | buffer[MAG_ZOUT_L_OFFSET];
+//   ESP_ERROR_CHECK(
+//       imu_register_read(AK8362_SENSOR_ADDR, AK8362_STATUS_2, &overflow, 1));
+// }
+//
+// void imu_read(ImuData_t data) {
+//   DataOffsets_t offset = ACCEL_XOUT_H_OFFSET;
+//   uint8_t bufferSize = GYRO_ZOUT_L_OFFSET + 1;
+//   uint8_t buffer[bufferSize];
+//   ESP_ERROR_CHECK(
+//       imu_register_read(MPU9250_SENSOR_ADDR, ACCEL_XOUT_H, buffer,
+//       bufferSize));
+//   for (uint8_t sensor = ACCEL; sensor <= GYRO; sensor++) {
+//     if (sensor == GYRO) {
+//       offset = GYRO_XOUT_H_OFFSET;
+//     }
+//     for (uint8_t axis = X_AXIS; axis < NO_AXIS; axis++) {
+//       data[sensor][axis] = ((int16_t)buffer[2 * axis + offset] << 8) |
+//                            buffer[2 * axis + offset + 1];
+//     }
+//   }
+//   mag_read(data);
+//   return;
+// }
 
 uint8_t imu_get_accel_range() { return accelRange[ACCEL_RANGE_SETTING]; }
 
 uint16_t imu_get_gyro_range() { return gyroRange[GYRO_RANGE_SETTING]; }
 
-uint16_t imu_get_mag_range() { return magRange; }
+uint16_t imu_get_mag_range() { return AK8362_MAX_RANGE; }
