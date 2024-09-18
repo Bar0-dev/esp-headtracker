@@ -5,44 +5,43 @@
 
 #define MAX_AOS_PER_EVENT 10
 
-typedef enum 
-{
-    EV_BUTTON_PRESSED = USER_SIG,
-    EV_BUTTON_RELEASED,
-    EV_BUTTON_DOUBLE_PRESS,
-    EV_BUTTON_HOLD,
-    EV_CONTROLLER_START_READING_IMU,
-    EV_CONTROLLER_STOP_READING_IMU,
-    EV_CONTROLLER_START_CALIBRATION_IMU,
-    EV_CONTROLLER_STOP_CALIBRATION_IMU,
-    EV_CONTROLLER_CALIBRATE_ACCEL,
-    EV_CONTROLLER_CALIBRATE_MAG,
-    EV_CONTROLLER_CALIBRATE_GYRO,
-    EV_CONTROLLER_CONNECT_DEVICE,
-    EV_IMU_IDLE,
-    EV_IMU_READING,
-    EV_IMU_CALIBRATION_READY,
-    EV_IMU_CALIBRATION_IN_PROGRESS,
-    EV_IMU_CALIBRATION_DONE,
-    EV_IMU_SEND_DATA,
-    LAST_EVENT_FLAG,
+typedef enum {
+  EV_BUTTON_PRESSED = USER_SIG,
+  EV_BUTTON_RELEASED,
+  EV_BUTTON_DOUBLE_PRESS,
+  EV_BUTTON_HOLD,
+  EV_CONTROLLER_START_READING_IMU,
+  EV_CONTROLLER_STOP_READING_IMU,
+  EV_CONTROLLER_START_CALIBRATION_IMU,
+  EV_CONTROLLER_STOP_CALIBRATION_IMU,
+  EV_CONTROLLER_CALIBRATE_ACCEL,
+  EV_CONTROLLER_CALIBRATE_MAG,
+  EV_CONTROLLER_CALIBRATE_GYRO,
+  EV_CONTROLLER_CONNECT_DEVICE,
+  EV_IMU_IDLE,
+  EV_IMU_READING,
+  EV_IMU_CALIBRATION_READY,
+  EV_IMU_CALIBRATION_IN_PROGRESS,
+  EV_IMU_CALIBRATION_DONE,
+  EV_IMU_SEND_DATA,
+  EV_IMU_HAL_DATA_READY,
+  EV_IMU_HAL_PROCESS_BUFFER,
+  LAST_EVENT_FLAG,
 } GlobalSignal_t;
 
-typedef struct 
-{
-    Event super;
-    Active *aos[MAX_AOS_PER_EVENT];
-    uint8_t subscribers;
+typedef struct {
+  Event super;
+  Active *aos[MAX_AOS_PER_EVENT];
+  uint8_t subscribers;
 } GlobalEvent_t;
 
-typedef struct
-{
-    Active super;
-    GlobalEvent_t globalEvents[LAST_EVENT_FLAG-USER_SIG];
+typedef struct {
+  Active super;
+  GlobalEvent_t globalEvents[LAST_EVENT_FLAG - USER_SIG];
 } Broker;
 
-void Broker_ctor(Broker * const me);
+void Broker_ctor(Broker *const me);
 
-void Broker_subscribe(Broker * const me, Event const * const e, Active * const ao);
+void Broker_subscribe(Broker *const me, Event const *const e, Active *const ao);
 
 #endif

@@ -1,6 +1,8 @@
 #include "imu_helpers.h"
 #include "core.h"
 #include "esp_log.h"
+#include "imu_hal.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 // SLOW!!
@@ -17,15 +19,15 @@ void convertRaw(ImuData_t raw, float data[NO_SENSOR][NO_AXIS]) {
   for (Sensor_t sensor = ACCEL; sensor < NO_SENSOR; sensor++) {
     switch (sensor) {
     case ACCEL:
-      range = (int16_t)imu_get_accel_range();
+      range = (int16_t)imu_hal_get_accel_range();
       break;
 
     case GYRO:
-      range = imu_get_gyro_range();
+      range = imu_hal_get_gyro_range();
       break;
 
     case MAG:
-      range = imu_get_mag_range();
+      range = imu_hal_get_mag_range();
       break;
 
     default:
@@ -96,15 +98,18 @@ void accelBufferClear(AccelCalibrationBuffer_t *buffer) {
   }
 }
 
-void accelUpdateBuffer(ImuData_t read, AccelCalibrationBuffer_t *buffer,
+void accelUpdateBuffer(Buffer_t *sensorBuffer, AccelCalibrationBuffer_t *buffer,
                        Axis_t axis, Direction_t direction) {
-  buffer->sums[direction][axis] += read[ACCEL][axis];
-  buffer->samples[direction][axis]++;
+  for (uint8_t index = 0; index < sensorBuffer->length; index++) {
+    buffer->sums[direction][axis] +=
+        sensorBuffer->data[index].read[ACCEL][axis];
+    buffer->samples[direction][axis]++;
+  }
 }
 
 void accelCalculateBiasAndScale(AccelCalibrationBuffer_t *buffer,
                                 AccelCalibrationData_t *data) {
-  uint8_t range = imu_get_accel_range();
+  uint8_t range = imu_hal_get_accel_range();
   int16_t ymax = INT16_MAX / range;
   int16_t ymin = INT16_MIN / range;
   int16_t xmax;
@@ -146,11 +151,13 @@ void gyroBufferClear(GyroCalibrationBuffer_t *buffer) {
   buffer->samples = 0;
 }
 
-void gyroUpdateBuffer(ImuData_t read, GyroCalibrationBuffer_t *buffer) {
-  for (Axis_t axis = X_AXIS; axis < NO_AXIS; axis++) {
-    buffer->sums[axis] += read[GYRO][axis];
+void gyroUpdateBuffer(Buffer_t *sensorBuffer, GyroCalibrationBuffer_t *buffer) {
+  for (uint8_t index = 0; index < sensorBuffer->length; index++) {
+    for (Axis_t axis = X_AXIS; axis < NO_AXIS; axis++) {
+      buffer->sums[axis] += sensorBuffer->data[index].read[GYRO][axis];
+    }
+    buffer->samples++;
   }
-  buffer->samples++;
 }
 
 void gyroCalculateBias(GyroCalibrationBuffer_t *buffer,

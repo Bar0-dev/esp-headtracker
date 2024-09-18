@@ -1,5 +1,8 @@
 #include "imu_hal.h"
+#include "esp_ao.h"
 #include "esp_log.h"
+#include "esp_timer.h"
+#include "events_broker.h"
 #include "imu_i2c.h"
 #include "imu_spi.h"
 #include "registers.h"
@@ -105,12 +108,12 @@ static void i2c_set_and_check_config_arr(uint8_t sensorAddr,
 }
 
 static void IRAM_ATTR interrupt_handler(void *arg) {
-  // Event evt = {.sig = EV_IMU_HAL_BUFFER_READING, .payload = (void *)0};
-  // Active_postFromISR(AO_Broker, &evt);
+  Event evt = {.sig = EV_IMU_HAL_DATA_READY, .payload = (void *)0};
+  Active_postFromISR(AO_Imu, &evt);
 }
 
-void imu_enable_interrupt() { gpio_intr_enable(MPU_INT_PIN); }
-void imu_disable_interrupt() { gpio_intr_disable(MPU_INT_PIN); }
+void imu_hal_enable_interrupt() { gpio_intr_enable(MPU_INT_PIN); }
+void imu_hal_disable_interrupt() { gpio_intr_disable(MPU_INT_PIN); }
 
 static void imu_int_pin_config() {
   static const gpio_config_t intPinGpioConf = {
@@ -124,7 +127,7 @@ static void imu_int_pin_config() {
   gpio_config(&intPinGpioConf);
   gpio_install_isr_service(0);
   gpio_isr_handler_add(MPU_INT_PIN, interrupt_handler, (void *)0);
-  imu_disable_interrupt();
+  imu_hal_disable_interrupt();
 }
 
 void imu_hal_init() {
@@ -135,24 +138,54 @@ void imu_hal_init() {
   imu_int_pin_config();
 }
 
-void imu_read(ImuData_t data) {
+static void imu_read(ImuTimedData_t *data) {
   DataOffsets_t offset = ACCEL_XOUT_H_OFFSET;
   uint8_t bufferSize = MAG_ZOUT_L_OFFSET + 1;
   uint8_t buffer[bufferSize];
   mpu_spi_read_bytes(ACCEL_XOUT_H, buffer, bufferSize);
+  data->timestamp = esp_timer_get_time();
   for (uint8_t sensor = ACCEL; sensor < NO_SENSOR; sensor++) {
     if (sensor == GYRO) {
       offset = GYRO_XOUT_H_OFFSET;
     }
     for (uint8_t axis = X_AXIS; axis < NO_AXIS; axis++) {
-      data[sensor][axis] = ((int16_t)buffer[2 * axis + offset] << 8) |
-                           buffer[2 * axis + offset + 1];
+      data->read[sensor][axis] = ((int16_t)buffer[2 * axis + offset] << 8) |
+                                 buffer[2 * axis + offset + 1];
     }
   }
 }
 
-uint8_t imu_get_accel_range() { return accelRange[ACCEL_RANGE_SETTING]; }
+uint8_t imu_hal_get_accel_range() { return accelRange[ACCEL_RANGE_SETTING]; }
+uint16_t imu_hal_get_gyro_range() { return gyroRange[GYRO_RANGE_SETTING]; }
+uint16_t imu_hal_get_mag_range() { return AK8362_MAX_RANGE; }
 
-uint16_t imu_get_gyro_range() { return gyroRange[GYRO_RANGE_SETTING]; }
+static DBuffer_t dBuffer;
 
-uint16_t imu_get_mag_range() { return AK8362_MAX_RANGE; }
+void imu_hal_init_dbuffer() {
+  dBuffer.writeBuffer = &(dBuffer.buffA);
+  dBuffer.readBuffer = &(dBuffer.buffB);
+  dBuffer.buffA.length = 0;
+  dBuffer.buffB.length = 0;
+}
+
+void imu_hal_swap_dbuffer() {
+  Buffer_t *tempBufferP = dBuffer.writeBuffer;
+  dBuffer.writeBuffer = dBuffer.readBuffer;
+  dBuffer.readBuffer = tempBufferP;
+  dBuffer.writeBuffer->length = 0;
+}
+
+void imu_hal_update_dbuffer() {
+  ImuTimedData_t *currRead =
+      &(dBuffer.writeBuffer->data[dBuffer.writeBuffer->length]);
+
+  imu_read(currRead);
+  dBuffer.writeBuffer->length++;
+  if (dBuffer.writeBuffer->length >= MAX_BUFFER_SIZE) {
+    Event evt = {.sig = EV_IMU_HAL_PROCESS_BUFFER, .payload = (void *)0};
+    Active_post(AO_Imu, &evt);
+    imu_hal_swap_dbuffer();
+  }
+}
+
+Buffer_t *imu_hal_read_buffer() { return dBuffer.readBuffer; }

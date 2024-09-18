@@ -19,14 +19,12 @@
 typedef struct {
   Active super;
   CalibtrationData_t calibration;
-  TimeEvent readTimer;
   TimeEvent calibrationTimer;
   TimeEvent preCalibrationTimer;
 } Imu;
 
 enum ImuEventSignals {
-  IMU_READ_TIMEOUT_SIG = LAST_EVENT_FLAG,
-  IMU_CALIBRATION_TIMEOUT_SIG,
+  IMU_CALIBRATION_TIMEOUT_SIG = LAST_EVENT_FLAG,
   IMU_PRE_CALIBRATION_TIMEOUT_SIG,
   IMU_AXIS_CAL_DONE,
 };

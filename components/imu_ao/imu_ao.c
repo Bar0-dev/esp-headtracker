@@ -1,5 +1,7 @@
 #include "imu_ao.h"
 #include "core.h"
+#include "events_broker.h"
+#include "imu_hal.h"
 
 // Forward declarations
 State Imu_init(Imu *const me, Event const *const e);
@@ -56,6 +58,11 @@ State Imu_top(Imu *const me, Event const *const e) {
     status = transition(&me->super.super, (StateHandler)&Imu_idle);
     break;
 
+  case EV_IMU_HAL_DATA_READY:
+    imu_hal_update_dbuffer();
+    status = HANDLED_STATUS;
+    break;
+
   case EXIT_SIG:
     status = HANDLED_STATUS;
     break;
@@ -92,21 +99,21 @@ State Imu_read(Imu *const me, Event const *const e) {
   State status;
   Event evt = {LAST_EVENT_FLAG, (void *)0};
   Packet_t packet = {.length = 0};
-  ImuData_t read;
   switch (e->sig) {
   case ENTRY_SIG:
+    imu_hal_init_dbuffer();
+    imu_hal_enable_interrupt();
     evt.sig = EV_IMU_READING;
     Active_post(AO_Broker, &evt);
-    TimeEvent_arm(&me->readTimer);
     status = HANDLED_STATUS;
     break;
 
-  case IMU_READ_TIMEOUT_SIG:
-    imu_read(read);
-    accelApplyBiasAndScale(read, &me->calibration.accel);
-    gyroApplyBias(read, &me->calibration.gyro);
-    magApplyTransformMatrix(read, &me->calibration.mag);
-    prepareRawPacket(read, &packet);
+  case EV_IMU_HAL_PROCESS_BUFFER:
+
+    // accelApplyBiasAndScale(read, &me->calibration.accel);
+    // gyroApplyBias(read, &me->calibration.gyro);
+    // magApplyTransformMatrix(read, &me->calibration.mag);
+    // prepareRawPacket(read, &packet);
     evt.sig = EV_IMU_SEND_DATA;
     evt.payload = &packet;
     Active_post(AO_Broker, &evt);
@@ -114,7 +121,7 @@ State Imu_read(Imu *const me, Event const *const e) {
     break;
 
   case EXIT_SIG:
-    TimeEvent_disarm(&me->readTimer);
+    imu_hal_disable_interrupt();
     status = HANDLED_STATUS;
     break;
 
@@ -156,7 +163,6 @@ State Imu_cal_accel(Imu *const me, Event const *const e) {
   State status;
   Event evt = {LAST_EVENT_FLAG, (void *)0};
 
-  ImuData_t read;
   static AccelCalibrationBuffer_t buffer;
   static Axis_t axis = NO_AXIS;
   static char axisName[6];
@@ -164,6 +170,8 @@ State Imu_cal_accel(Imu *const me, Event const *const e) {
 
   switch (e->sig) {
   case ENTRY_SIG:
+    imu_hal_init_dbuffer();
+    imu_hal_enable_interrupt();
     accelBufferClear(&buffer);
     TimeEvent_arm(&me->preCalibrationTimer);
     axis = X_AXIS;
@@ -178,19 +186,11 @@ State Imu_cal_accel(Imu *const me, Event const *const e) {
   case IMU_PRE_CALIBRATION_TIMEOUT_SIG:
     evt.sig = EV_IMU_CALIBRATION_IN_PROGRESS;
     Active_post(AO_Broker, &evt);
-    TimeEvent_arm(&me->readTimer);
     TimeEvent_arm(&me->calibrationTimer);
     status = HANDLED_STATUS;
     break;
 
-  case IMU_READ_TIMEOUT_SIG:
-    imu_read(read);
-    accelUpdateBuffer(read, &buffer, axis, direction);
-    status = HANDLED_STATUS;
-    break;
-
   case IMU_CALIBRATION_TIMEOUT_SIG:
-    TimeEvent_disarm(&me->readTimer);
     direction++;
     if (direction >= NO_DIRECTION) {
       direction = POSITIVE;
@@ -211,8 +211,13 @@ State Imu_cal_accel(Imu *const me, Event const *const e) {
     }
     break;
 
+  case EV_IMU_HAL_PROCESS_BUFFER:
+
+    status = HANDLED_STATUS;
+    break;
+
   case EXIT_SIG:
-    TimeEvent_disarm(&me->readTimer);
+    imu_hal_disable_interrupt();
     TimeEvent_disarm(&me->calibrationTimer);
     TimeEvent_disarm(&me->preCalibrationTimer);
     accelCalculateBiasAndScale(&buffer, &me->calibration.accel);
@@ -229,11 +234,12 @@ State Imu_cal_accel(Imu *const me, Event const *const e) {
 State Imu_cal_gyro(Imu *const me, Event const *const e) {
   State status;
   Event evt = {LAST_EVENT_FLAG, (void *)0};
-  ImuData_t read;
   static GyroCalibrationBuffer_t buffer;
 
   switch (e->sig) {
   case ENTRY_SIG:
+    imu_hal_init_dbuffer();
+    imu_hal_enable_interrupt();
     TimeEvent_arm(&me->preCalibrationTimer);
     gyroBufferClear(&buffer);
     ESP_LOGI("IMU_CALIBRATION", "Gyro calibration starts in: %ds",
@@ -244,26 +250,24 @@ State Imu_cal_gyro(Imu *const me, Event const *const e) {
   case IMU_PRE_CALIBRATION_TIMEOUT_SIG:
     evt.sig = EV_IMU_CALIBRATION_IN_PROGRESS;
     Active_post(AO_Broker, &evt);
-    TimeEvent_arm(&me->readTimer);
     TimeEvent_arm(&me->calibrationTimer);
     status = HANDLED_STATUS;
     break;
 
-  case IMU_READ_TIMEOUT_SIG:
-    imu_read(read);
-    gyroUpdateBuffer(read, &buffer);
-    status = HANDLED_STATUS;
-    break;
-
   case IMU_CALIBRATION_TIMEOUT_SIG:
-    TimeEvent_disarm(&me->readTimer);
     ESP_LOGI("IMU_CALIBRATION", "Gyro calibration finished");
     evt.sig = EV_IMU_CALIBRATION_DONE;
     Active_post(AO_Broker, &evt);
     status = transition(&me->super.super, (StateHandler)&Imu_calibration);
     break;
 
+  case EV_IMU_HAL_PROCESS_BUFFER:
+
+    status = HANDLED_STATUS;
+    break;
+
   case EXIT_SIG:
+    imu_hal_disable_interrupt();
     gyroCalculateBias(&buffer, &me->calibration.gyro);
     status = HANDLED_STATUS;
     break;
@@ -277,9 +281,6 @@ State Imu_cal_gyro(Imu *const me, Event const *const e) {
 
 void Imu_ctor(Imu *const me) {
   Active_ctor(&me->super, (StateHandler)&Imu_init);
-  TimeEvent_ctor(&me->readTimer, "IMU read timer",
-                 (TickType_t)(READ_PERIOD / portTICK_PERIOD_MS), pdTRUE,
-                 IMU_READ_TIMEOUT_SIG, &me->super);
   TimeEvent_ctor(
       &me->calibrationTimer, "IMU calibration timer",
       (TickType_t)(ACCEL_GYRO_CALIBRATION_PERIOD / portTICK_PERIOD_MS), pdFALSE,
