@@ -137,7 +137,8 @@ TEST_CASE("When gyro buffer is updated", "gyroUpdateBuffer unit test") {
   set_buffer_instance(&dataBuffer, read);
   Vector32_t testSums = {expected, expected, expected};
   uint16_t testSamples = expected;
-  gyroUpdateBuffer(&dataBuffer, &clibrationBuffer);
+  measure_execution_time2(gyroUpdateBuffer, &dataBuffer, &clibrationBuffer,
+                          "gyroUpdateBuffer");
   TEST_ASSERT_EQUAL_INT16_ARRAY(testSums, clibrationBuffer.sums, NO_AXIS);
   TEST_ASSERT_EQUAL(testSamples, clibrationBuffer.samples);
 }
