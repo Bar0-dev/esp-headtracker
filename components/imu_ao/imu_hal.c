@@ -13,10 +13,9 @@
 const char *TAG = "IMU_HAL";
 
 static const Config_t mpu_conf_1[] = {
-    {PWR_MGMT_1, 1 << DEVICE_RESET},
-    {SMPLRT_DIV, 0},
+    {SMPLRT_DIV, 100},
     {CONFIG, (ALLOW_OVERFLOW << FIFO_MODE) | (FSYNC_DISABLED << EXT_SYNC_SET) |
-                 (DLPF_20Hz << DLPF_CFG)},
+                 (DLPF_10Hz << DLPF_CFG)},
     {GYRO_CONFIG, (GYRO_FCHOICE_B_DISABLED << GYRO_FCHOICE_B) |
                       (GYRO_RANGE_SETTING << GYRO_FS_SEL) |
                       (0 << ZGYRO_SELF_TEST) | (0 << YGYRO_SELF_TEST) |
@@ -25,34 +24,28 @@ static const Config_t mpu_conf_1[] = {
                        (0 << ACCEL_SELF_TEST_X) | (0 << ACCEL_SELF_TEST_Y) |
                        (0 << ACCEL_SELF_TEST_Z)},
     {ACCEL_CONFIG_2, (ACCEL_FCHOICE_B_DISABLED << ACCEL_FCHOICE_B) |
-                         (ACCEL_DLPF_21p2Hz << A_DLPFCFG)},
-    {LP_ACCEL_ODR, 0},
-    {FIFO_EN, 0},
-    {WOM_THR, 0},
-    {I2C_MST_CTRL, 0},
-    {I2C_SLVO_ADDR, (1 << I2C_SLV0_RNW) | (AK8362_SENSOR_ADDR)},
-    {I2C_SLVO_REG, AK8362_MAG_DATA},
-    {I2C_SLVO_CTRL, (1 << I2C_SLV0_EN) | (1 << I2C_SLV0_BYTE_SW) |
-                        (0 << I2C_SLV0_REG_DIS) | (0 << I2C_SLV0_GRP) |
-                        (7 << I2C_SLV0_LENG)},
+                         (ACCEL_DLPF_10p2Hz << A_DLPFCFG)},
+    // {I2C_SLVO_ADDR, (1 << I2C_SLV0_RNW) | (AK8362_SENSOR_ADDR)},
+    // {I2C_SLVO_REG, AK8362_MAG_DATA},
+    // {I2C_SLVO_CTRL, (1 << I2C_SLV0_EN) | (1 << I2C_SLV0_BYTE_SW) |
+    //                     (0 << I2C_SLV0_REG_DIS) | (0 << I2C_SLV0_GRP) |
+    //                     (7 << I2C_SLV0_LENG)},
     {INT_PIN_CFG, (0 << ACTL) | (0 << INT_OPEN) | (0 << LATCH_INT_EN) |
-                      (1 << INT_ANYRD_2CLEAR) | (0 << ACTL_FSYNC) |
+                      (0 << INT_ANYRD_2CLEAR) | (0 << ACTL_FSYNC) |
                       (0 << FSYNC_INT_MODE_EN) | (1 << I2C_BYPASS_EN)},
-    {INT_ENABLE, (1 << DATA_RDY_EN)},
-    {MOT_DETECT_CTRL, 0},
+    {INT_ENABLE, (1 << RAW_RDY_EN)},
     {USER_CTRL, (0 << I2C_MST_EN) | (0 << I2C_IF_DIS)},
-    {PWR_MGMT_1, 0},
-    {PWR_MGMT_2, 0}};
-
-static const Config_t mag_conf[] = {
-    {AK8362_CONTROL_1,
-     (COUNTINIOUS_MODE_2 << MAG_OUTPUT_MODE) | (1 << MAG_OUTPUT_WIDTH)}};
-
-static const Config_t mpu_conf_2[] = {
-    {INT_PIN_CFG, (0 << I2C_BYPASS_EN)},
-    {I2C_MST_CTRL, I2C_MST_CLK_400kHz},
-    {USER_CTRL, (1 << I2C_MST_EN) | (1 << I2C_IF_DIS)},
 };
+
+// static const Config_t mag_conf[] = {
+//     {AK8362_CONTROL_1,
+//      (EXTERNAL_TRIGGER_MODE << MAG_OUTPUT_MODE) | (1 << MAG_OUTPUT_WIDTH)}};
+
+// static const Config_t mpu_conf_2[] = {
+//     {INT_PIN_CFG, (0 << I2C_BYPASS_EN)},
+//     {I2C_MST_CTRL, I2C_MST_CLK_400kHz},
+//     {USER_CTRL, (1 << I2C_MST_EN) | (1 << I2C_IF_DIS)},
+// };
 
 static const uint8_t accelRange[ACCEL_16G + 1] = {2, 4, 8, 16};
 static const uint16_t gyroRange[GYRO_2000DPS + 1] = {250, 500, 1000, 2000};
@@ -132,8 +125,9 @@ static void imu_int_pin_config() {
 
 void imu_hal_init() {
   spi_set_and_check_config_arr(mpu_conf_1, sizeof(mpu_conf_1));
-  i2c_set_and_check_config_arr(AK8362_SENSOR_ADDR, mag_conf, sizeof(mag_conf));
-  spi_set_and_check_config_arr(mpu_conf_2, sizeof(mpu_conf_2));
+  // i2c_set_and_check_config_arr(AK8362_SENSOR_ADDR, mag_conf,
+  // sizeof(mag_conf)); spi_set_and_check_config_arr(mpu_conf_2,
+  // sizeof(mpu_conf_2));
   mpu_spi_bus_init();
   imu_int_pin_config();
 }

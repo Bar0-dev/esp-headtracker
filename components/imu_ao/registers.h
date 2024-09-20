@@ -106,7 +106,7 @@
 
 typedef enum { DLPF_CFG, EXT_SYNC_SET = 3, FIFO_MODE = 6 } ConfigReg_t;
 
-typedef enum { NO_OVERFLOW, ALLOW_OVERFLOW } FifoModeConf_t;
+typedef enum { ALLOW_OVERFLOW, NO_OVERFLOW } FifoModeConf_t;
 typedef enum {
   DLPF_250Hz,
   DLPF_184Hz,
@@ -206,10 +206,12 @@ typedef enum {
   ACTL,
 } IntPinCfgOffsets_t;
 
+// TODO: check this
 typedef enum {
-  DATA_RDY_EN,
-  I2C_MST_INT_EN = 3,
+  RAW_RDY_EN,
+  FSYNC_INT_EN = 3,
   FIFO_OFLOW_EN,
+  WOM_EN = 6
 } IntEnable_t;
 
 typedef enum {

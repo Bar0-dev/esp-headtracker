@@ -9,7 +9,7 @@
 
 #define ACCEL_RANGE_SETTING ACCEL_2G
 #define GYRO_RANGE_SETTING GYRO_500DPS
-#define MPU_INT_PIN 33
+#define MPU_INT_PIN 26
 #define MAX_BUFFER_SIZE 10
 
 typedef struct {

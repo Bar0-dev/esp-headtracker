@@ -58,11 +58,6 @@ State Imu_top(Imu *const me, Event const *const e) {
     status = transition(&me->super.super, (StateHandler)&Imu_idle);
     break;
 
-  case EV_IMU_HAL_DATA_READY:
-    imu_hal_update_dbuffer();
-    status = HANDLED_STATUS;
-    break;
-
   case EXIT_SIG:
     status = HANDLED_STATUS;
     break;
@@ -101,8 +96,10 @@ State Imu_read(Imu *const me, Event const *const e) {
   Packet_t packet = {.length = 0};
   switch (e->sig) {
   case ENTRY_SIG:
+    ESP_LOGI("DUBUG", "READ STATE ENTERED");
     imu_hal_init_dbuffer();
     imu_hal_enable_interrupt();
+    imu_hal_update_dbuffer();
     evt.sig = EV_IMU_READING;
     Active_post(AO_Broker, &evt);
     status = HANDLED_STATUS;
@@ -114,9 +111,16 @@ State Imu_read(Imu *const me, Event const *const e) {
     // gyroApplyBias(read, &me->calibration.gyro);
     // magApplyTransformMatrix(read, &me->calibration.mag);
     // prepareRawPacket(read, &packet);
-    evt.sig = EV_IMU_SEND_DATA;
-    evt.payload = &packet;
-    Active_post(AO_Broker, &evt);
+    // evt.sig = EV_IMU_SEND_DATA;
+    // evt.payload = &packet;
+    // Active_post(AO_Broker, &evt);
+    ESP_LOGI("DUBUG", "POC BUFF");
+    status = HANDLED_STATUS;
+    break;
+
+  case EV_IMU_HAL_DATA_READY:
+    ESP_LOGI("DUBUG", "DATAREADY");
+    imu_hal_update_dbuffer();
     status = HANDLED_STATUS;
     break;
 
