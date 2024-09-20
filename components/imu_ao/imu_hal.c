@@ -132,6 +132,8 @@ void imu_hal_init() {
   imu_int_pin_config();
 }
 
+static int64_t prevTime;
+
 static void imu_read(ImuTimedData_t *data) {
   DataOffsets_t offsets[NO_SENSOR] = {ACCEL_XOUT_H_OFFSET, GYRO_XOUT_H_OFFSET,
                                       MAG_XOUT_L_OFFSET};
@@ -139,7 +141,9 @@ static void imu_read(ImuTimedData_t *data) {
   uint8_t bufferSize = MAG_ZOUT_L_OFFSET + 1;
   uint8_t buffer[bufferSize];
   mpu_spi_read_bytes(ACCEL_XOUT_H, buffer, bufferSize);
-  data->timestamp = esp_timer_get_time();
+  int64_t currenTime = esp_timer_get_time();
+  data->timeDelta = currenTime - prevTime;
+  prevTime = currenTime;
   for (uint8_t sensor = ACCEL; sensor < NO_SENSOR; sensor++) {
     offset = offsets[sensor];
     for (uint8_t axis = X_AXIS; axis < NO_AXIS; axis++) {
@@ -160,6 +164,7 @@ void imu_hal_init_dbuffer() {
   dBuffer.readBuffer = &(dBuffer.buffB);
   dBuffer.buffA.length = 0;
   dBuffer.buffB.length = 0;
+  prevTime = esp_timer_get_time();
 }
 
 void imu_hal_swap_dbuffer() {

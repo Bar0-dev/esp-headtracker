@@ -58,6 +58,11 @@ State Imu_top(Imu *const me, Event const *const e) {
     status = transition(&me->super.super, (StateHandler)&Imu_idle);
     break;
 
+  case EV_IMU_HAL_DATA_READY:
+    imu_hal_update_dbuffer();
+    status = HANDLED_STATUS;
+    break;
+
   case EXIT_SIG:
     status = HANDLED_STATUS;
     break;
@@ -113,15 +118,9 @@ State Imu_read(Imu *const me, Event const *const e) {
     // evt.sig = EV_IMU_SEND_DATA;
     // evt.payload = &packet;
     // Active_post(AO_Broker, &evt);
+    // TODO: add madgwick filter here
     Buffer_t *readBuffer = imu_hal_read_buffer();
-    ESP_LOGI("DUBUG", "%d %d %d", readBuffer->data[0].read[sensor][0],
-             readBuffer->data[0].read[sensor][1],
-             readBuffer->data[0].read[sensor][2]);
-    status = HANDLED_STATUS;
-    break;
-
-  case EV_IMU_HAL_DATA_READY:
-    imu_hal_update_dbuffer();
+    ESP_LOGI("DUBUG", "%lld", readBuffer->data[5].timeDelta);
     status = HANDLED_STATUS;
     break;
 

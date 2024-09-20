@@ -20,7 +20,7 @@ typedef struct {
 typedef Vector16_t ImuData_t[NO_SENSOR];
 
 typedef struct {
-  int64_t timestamp;
+  int64_t timeDelta;
   ImuData_t read;
 } ImuTimedData_t;
 
