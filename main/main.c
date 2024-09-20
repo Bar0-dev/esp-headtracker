@@ -32,7 +32,7 @@ void app_main(void) {
   Active_start(AO_Button, "Button thread", 2048, 1, tskNO_AFFINITY, 10);
 
   Imu_ctor(&imu);
-  Active_start(AO_Imu, "Imu thread", 8192, 18, tskNO_AFFINITY, 100);
+  Active_start(AO_Imu, "Imu thread", 8192, 21, tskNO_AFFINITY, 50);
 
   Coms_ctor(&coms);
   Active_start(AO_Coms, "Coms thread", 4096, 19, tskNO_AFFINITY, 10);
