@@ -2,6 +2,7 @@
 #include "core.h"
 #include "events_broker.h"
 #include "imu_hal.h"
+#include "imu_helpers.h"
 #include <stdint.h>
 
 // Forward declarations
@@ -217,7 +218,8 @@ State Imu_cal_accel(Imu *const me, Event const *const e) {
     break;
 
   case EV_IMU_HAL_PROCESS_BUFFER:
-
+    Buffer_t *sensorBuffer = imu_hal_read_buffer();
+    accelUpdateBuffer(sensorBuffer, &buffer, axis, direction);
     status = HANDLED_STATUS;
     break;
 
@@ -267,7 +269,8 @@ State Imu_cal_gyro(Imu *const me, Event const *const e) {
     break;
 
   case EV_IMU_HAL_PROCESS_BUFFER:
-
+    Buffer_t *sensorBuffer = imu_hal_read_buffer();
+    gyroUpdateBuffer(sensorBuffer, &buffer);
     status = HANDLED_STATUS;
     break;
 
