@@ -2,6 +2,7 @@
 #include "core.h"
 #include "events_broker.h"
 #include "imu_hal.h"
+#include <stdint.h>
 
 // Forward declarations
 State Imu_init(Imu *const me, Event const *const e);
@@ -120,7 +121,7 @@ State Imu_read(Imu *const me, Event const *const e) {
     // Active_post(AO_Broker, &evt);
     // TODO: add madgwick filter here
     Buffer_t *readBuffer = imu_hal_read_buffer();
-    ESP_LOGI("DUBUG", "%lld", readBuffer->data[5].timeDelta);
+    ESP_LOGI("DUBUG", "%lld", readBuffer->data[1].timeDelta);
     status = HANDLED_STATUS;
     break;
 
