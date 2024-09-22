@@ -1,10 +1,13 @@
 #include "imu_spi.h"
+#include "driver/spi_master.h"
 #include "esp_log.h"
 #include <assert.h>
 
 static char *TAG = "SPI_BUS";
 
 static spi_device_handle_t mpu_spi;
+
+spi_device_handle_t *mpu_spi_get_handle() { return &mpu_spi; }
 
 void mpu_spi_bus_init() {
   esp_err_t ret;
@@ -64,6 +67,7 @@ void mpu_spi_write_byte(uint8_t regAddr, const uint8_t data) {
 }
 
 void mpu_spi_read_bytes(uint8_t regAddr, uint8_t *data, size_t length) {
+  spi_device_acquire_bus(mpu_spi, portMAX_DELAY);
   assert(length > 0);
   spi_transaction_t transaction;
   transaction.flags = 0;
@@ -76,6 +80,7 @@ void mpu_spi_read_bytes(uint8_t regAddr, uint8_t *data, size_t length) {
   transaction.rx_buffer = data;
   esp_err_t ret = spi_device_transmit(mpu_spi, &transaction);
   ESP_ERROR_CHECK(ret);
+  spi_device_release_bus(mpu_spi);
 }
 
 void mpu_spi_read_byte(uint8_t regAddr, uint8_t *data) {

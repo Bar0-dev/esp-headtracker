@@ -1,5 +1,6 @@
 #include "imu_ao.h"
 #include "core.h"
+#include "esp_ao.h"
 #include "events_broker.h"
 #include "imu_hal.h"
 #include "imu_helpers.h"
@@ -101,7 +102,6 @@ State Imu_read(Imu *const me, Event const *const e) {
   State status;
   Event evt = {LAST_EVENT_FLAG, (void *)0};
   Packet_t packet = {.length = 0};
-  Sensor_t sensor = MAG;
   switch (e->sig) {
   case ENTRY_SIG:
     imu_hal_init_dbuffer();
@@ -112,17 +112,28 @@ State Imu_read(Imu *const me, Event const *const e) {
     break;
 
   case EV_IMU_HAL_PROCESS_BUFFER:
-
-    // accelApplyBiasAndScale(read, &me->calibration.accel);
-    // gyroApplyBias(read, &me->calibration.gyro);
-    // magApplyTransformMatrix(read, &me->calibration.mag);
-    // prepareRawPacket(read, &packet);
-    // evt.sig = EV_IMU_SEND_DATA;
-    // evt.payload = &packet;
-    // Active_post(AO_Broker, &evt);
-    // TODO: add madgwick filter here
+    int64_t timeDelta;
     Buffer_t *readBuffer = imu_hal_read_buffer();
-    ESP_LOGI("DUBUG", "%lld", readBuffer->data[1].timeDelta);
+    ImuData_t *data = &readBuffer->data[0].read;
+    fImuData_t converted;
+    for (uint8_t index = 0; index < readBuffer->length; index++) {
+      timeDelta = readBuffer->data[index].timeDelta;
+      data = &readBuffer->data[index].read;
+      accelApplyBiasAndScale(data, &me->calibration.accel);
+      gyroApplyBias(data, &me->calibration.gyro);
+      magApplyTransformMatrix(data);
+      convertRaw(data, &converted);
+    }
+    // ESP_LOGI("DUBUG", "%0.1f, %0.1f, %0.1f,", converted.sensor.mag.axis.x,
+    //          converted.sensor.mag.axis.y, converted.sensor.mag.axis.z);
+    // ESP_LOGI("DUBUG", "%d, %d, %d,", (*data)[MAG][X_AXIS],
+    // (*data)[MAG][Y_AXIS],
+    //          (*data)[MAG][Z_AXIS]);
+
+    prepareRawPacket(*data, &packet);
+    evt.sig = EV_IMU_SEND_DATA;
+    evt.payload = &packet;
+    Active_post(AO_Broker, &evt);
     status = HANDLED_STATUS;
     break;
 

@@ -5,43 +5,27 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-// SLOW!!
+
 static float map_int16_to_range(int16_t value, int16_t range) {
   return ((float)value - INT16_MIN) * 2 * range / (INT16_MAX - INT16_MIN) -
          range;
 }
-// SLOW!!
 
 // TODO: change mag mapping to 32760
-// SLOW
-void convertRaw(ImuData_t raw, float data[NO_SENSOR][NO_AXIS]) {
-  uint16_t range;
-  for (Sensor_t sensor = ACCEL; sensor < NO_SENSOR; sensor++) {
-    switch (sensor) {
-    case ACCEL:
-      range = (int16_t)imu_hal_get_accel_range();
-      break;
+void convertRaw(ImuData_t *raw, fImuData_t *out) {
+  uint16_t rangeAccel = (int16_t)imu_hal_get_accel_range();
+  uint16_t rangeGyro = imu_hal_get_gyro_range();
+  uint16_t rangeMag = imu_hal_get_mag_range();
 
-    case GYRO:
-      range = imu_hal_get_gyro_range();
-      break;
-
-    case MAG:
-      range = imu_hal_get_mag_range();
-      break;
-
-    default:
-      assert(0);
-      break;
-    }
-
-    for (uint8_t axis = X_AXIS; axis < NO_AXIS; axis++) {
-      data[sensor][axis] = map_int16_to_range(raw[sensor][axis], range);
-    }
+  for (uint8_t axis = X_AXIS; axis < NO_AXIS; axis++) {
+    out->sensor.accel.array[axis] =
+        map_int16_to_range((*raw)[ACCEL][axis], rangeAccel);
+    out->sensor.gyro.array[axis] =
+        map_int16_to_range((*raw)[GYRO][axis], rangeGyro);
+    out->sensor.mag.array[axis] =
+        map_int16_to_range((*raw)[MAG][axis], rangeMag);
   }
-  return;
 }
-// SLOW
 
 AxisString_t axes[] = {
     "X_AXIS",
@@ -65,21 +49,6 @@ void prepareRawPacket(ImuData_t data, Packet_t *packet) {
   for (Sensor_t sensor = ACCEL; sensor < NO_SENSOR; sensor++) {
     for (Axis_t axis = X_AXIS; axis < NO_AXIS; axis++) {
       sprintf(buffer, "%d,", data[sensor][axis]);
-      packet->length += strlen(buffer);
-      strcat(packet->payload, buffer);
-    }
-  }
-  strcat(packet->payload, "\n");
-  packet->length++;
-}
-
-void preparePacket(ImuData_t data, Packet_t *packet) {
-  float conveted_data[NO_SENSOR][NO_AXIS];
-  char buffer[MAX_SINGLE_READING_SIZE];
-  convertRaw(data, conveted_data);
-  for (Sensor_t sensor = ACCEL; sensor < NO_SENSOR; sensor++) {
-    for (Axis_t axis = X_AXIS; axis < NO_AXIS; axis++) {
-      sprintf(buffer, "%.2f,", conveted_data[sensor][axis]);
       packet->length += strlen(buffer);
       strcat(packet->payload, buffer);
     }
@@ -135,12 +104,13 @@ void accelCalculateBiasAndScale(AccelCalibrationBuffer_t *buffer,
   data->completed = true;
 }
 
-void accelApplyBiasAndScale(ImuData_t output, AccelCalibrationData_t *data) {
+void accelApplyBiasAndScale(ImuData_t *output, AccelCalibrationData_t *data) {
   Sensor_t sensor = ACCEL;
   for (Axis_t axis = X_AXIS; axis < NO_AXIS; axis++) {
-    output[sensor][axis] = (int16_t)(data->scale[axis] * output[sensor][axis] /
-                                     ACCEL_SCALE_FACTOR) +
-                           data->bias[axis];
+    (*output)[sensor][axis] =
+        (int16_t)(data->scale[axis] * (*output)[sensor][axis] /
+                  ACCEL_SCALE_FACTOR) +
+        data->bias[axis];
   }
 }
 
@@ -169,9 +139,9 @@ void gyroCalculateBias(GyroCalibrationBuffer_t *buffer,
   data->completed = true;
 }
 
-void gyroApplyBias(ImuData_t output, GyroCalibrationData_t *data) {
+void gyroApplyBias(ImuData_t *output, GyroCalibrationData_t *data) {
   for (Axis_t axis = X_AXIS; axis < NO_AXIS; axis++) {
-    output[GYRO][axis] = output[GYRO][axis] - data->bias[axis];
+    (*output)[GYRO][axis] = (*output)[GYRO][axis] - data->bias[axis];
   }
 }
 
@@ -188,25 +158,26 @@ void loadMagTransformationMatrix(MagCalibrationData_t *data) {
   freeMatrix16(&transformMatrix);
 }
 
-void magApplyTransformMatrix(ImuData_t output, MagCalibrationData_t *data) {
-  Vector16_t biasVector = {-50, -33, 18};
+// TODO: Change this to use calibration data
+void magApplyTransformMatrix(ImuData_t *output) {
+  Vector16_t biasVector = {-61, -70, -265};
   for (Axis_t axis = X_AXIS; axis < NO_AXIS; axis++) {
-    output[MAG][axis] = output[MAG][axis] - biasVector[axis];
+    (*output)[MAG][axis] = (*output)[MAG][axis] - biasVector[axis];
   }
   Matrix16_t transformMatrix;
   allocateMatrix16(3, 3, &transformMatrix);
   int16_t transformScalers[3][3] = {
-      {5408, -1988, 8574}, {6883, -5071, -5646}, {-4829, -8195, 148}};
+      {-8781, 3990, 4265}, {4620, 8604, 1508}, {2782, -3565, 8481}};
   for (uint8_t row = 0; row < 3; row++) {
     addRowMatrix16(transformScalers[row], row, &transformMatrix);
   }
   Matrix16_t magReadVector;
   Matrix32_t outputVector;
   allocateMatrix16(1, 3, &magReadVector);
-  addRowMatrix16(output[MAG], 0, &magReadVector);
+  addRowMatrix16((*output)[MAG], 0, &magReadVector);
   multiplyMatrix16(&magReadVector, &transformMatrix, &outputVector);
   for (uint8_t column = 0; column < outputVector.numOfCols; column++) {
-    output[MAG][column] = outputVector.m[0][column] / INVERSE_MATRIX_SCALER;
+    (*output)[MAG][column] = outputVector.m[0][column] / INVERSE_MATRIX_SCALER;
   }
   freeMatrix16(&transformMatrix);
   freeMatrix16(&magReadVector);

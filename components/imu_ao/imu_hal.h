@@ -17,6 +17,7 @@ typedef struct {
   uint8_t config_byte;
 } Config_t;
 
+// TODO: Refactor this to union
 typedef Vector16_t ImuData_t[NO_SENSOR];
 
 typedef struct {

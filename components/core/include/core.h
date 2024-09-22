@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define MAX_PACKET_SIZE 88
+#define MAX_PACKET_SIZE 200
 #define MAX_SINGLE_READING_SIZE 8
 #define MAX_MAG_CALIBRATION_SAMPLES 800 // equivalent of 8s of calibration
 #define BASE_MATRIX_NO_OF_COLUMNS 3

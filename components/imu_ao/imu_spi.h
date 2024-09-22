@@ -4,7 +4,7 @@
 #include "driver/spi_master.h"
 #include "registers.h"
 
-#define MPU_SPI_HOST SPI3_HOST
+#define MPU_SPI_HOST VSPI_HOST
 #define PIN_NUM_MISO 19
 #define PIN_NUM_MOSI 23
 #define PIN_NUM_CLK 18
@@ -12,6 +12,7 @@
 #define SPIBUS_READ (0x80)
 #define SPIBUS_WRITE (0x7F)
 
+spi_device_handle_t *mpu_spi_get_handle();
 void mpu_spi_bus_init();
 void mpu_spi_write_bytes(uint8_t regAddr, const uint8_t *data, size_t length);
 void mpu_spi_write_byte(uint8_t regAddr, uint8_t data);

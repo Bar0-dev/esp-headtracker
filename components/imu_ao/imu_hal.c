@@ -1,11 +1,13 @@
 #include "imu_hal.h"
 #include "core.h"
+#include "driver/spi_master.h"
 #include "esp_ao.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "events_broker.h"
 #include "imu_i2c.h"
 #include "imu_spi.h"
+#include "portmacro.h"
 #include "registers.h"
 #include <assert.h>
 #include <stdbool.h>
@@ -28,8 +30,8 @@ static const Config_t mpu_conf_1[] = {
                          (ACCEL_DLPF_10p2Hz << A_DLPFCFG)},
     {I2C_SLVO_ADDR, (1 << I2C_SLV0_RNW) | (AK8362_SENSOR_ADDR)},
     {I2C_SLVO_REG, AK8362_MAG_DATA},
-    {I2C_SLVO_CTRL, (1 << I2C_SLV0_EN) | (0 << I2C_SLV0_BYTE_SW) |
-                        (0 << I2C_SLV0_REG_DIS) | (0 << I2C_SLV0_GRP) |
+    {I2C_SLVO_CTRL, (1 << I2C_SLV0_EN) | (1 << I2C_SLV0_BYTE_SW) |
+                        (0 << I2C_SLV0_REG_DIS) | (1 << I2C_SLV0_GRP) |
                         (7 << I2C_SLV0_LENG)},
     {INT_PIN_CFG, (0 << ACTL) | (0 << INT_OPEN) | (0 << LATCH_INT_EN) |
                       (0 << INT_ANYRD_2CLEAR) | (0 << ACTL_FSYNC) |
@@ -138,7 +140,7 @@ static void imu_read(ImuTimedData_t *data) {
   DataOffsets_t offsets[NO_SENSOR] = {ACCEL_XOUT_H_OFFSET, GYRO_XOUT_H_OFFSET,
                                       MAG_XOUT_L_OFFSET};
   DataOffsets_t offset;
-  uint8_t bufferSize = MAG_ZOUT_L_OFFSET + 1;
+  uint8_t bufferSize = MAG_ZOUT_H_OFFSET + 1;
   uint8_t buffer[bufferSize];
   mpu_spi_read_bytes(ACCEL_XOUT_H, buffer, bufferSize);
   int64_t currenTime = esp_timer_get_time();
@@ -181,9 +183,9 @@ void imu_hal_update_dbuffer() {
   imu_read(currRead);
   dBuffer.writeBuffer->length++;
   if (dBuffer.writeBuffer->length >= MAX_BUFFER_SIZE) {
+    imu_hal_swap_dbuffer();
     Event evt = {.sig = EV_IMU_HAL_PROCESS_BUFFER, .payload = (void *)0};
     Active_post(AO_Imu, &evt);
-    imu_hal_swap_dbuffer();
   }
 }
 
