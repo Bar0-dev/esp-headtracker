@@ -15,6 +15,7 @@
   1 * 1000 // calculation period in ms (x*1000[ms] = x[s])
 #define MAG_CALIBRATION_PERIOD                                                 \
   10 * 1000 // calculation period in ms (x*1000[ms] = x[s])
+#define SAMPLE_RATE 1000
 
 typedef struct {
   Active super;

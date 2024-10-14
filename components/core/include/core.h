@@ -8,6 +8,7 @@
 #define MAX_MAG_CALIBRATION_SAMPLES 800 // equivalent of 8s of calibration
 #define BASE_MATRIX_NO_OF_COLUMNS 3
 #define INVERSE_MATRIX_SCALER 10000
+#define MICROSECONDS_IN_SECOND 1000000
 
 typedef struct {
   uint8_t length;

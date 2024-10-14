@@ -1,6 +1,7 @@
 #ifndef IMU_HELPERS_H
 #define IMU_HELPERS_H
 
+#include "FusionMath.h"
 #include "core.h"
 #include "imu_hal.h"
 #include <stdbool.h>
@@ -55,15 +56,15 @@ typedef union {
 } fVector_t;
 
 typedef union {
-  fVector_t array[NO_SENSOR];
+  FusionVector array[NO_SENSOR];
   struct {
-    fVector_t accel;
-    fVector_t gyro;
-    fVector_t mag;
+    FusionVector accel;
+    FusionVector gyro;
+    FusionVector mag;
   } sensor;
-} fImuData_t;
+} FusionSensorData_t;
 
-void convertRaw(ImuData_t *raw, fImuData_t *out);
+void convertRaw(ImuData_t *raw, FusionSensorData_t *out);
 void calibrationSetNotCompleted(CalibtrationData_t *calData);
 void getAxisName(Axis_t axis, AxisString_t axisString);
 void prepareRawPacket(ImuData_t data, Packet_t *packet);

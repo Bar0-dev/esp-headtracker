@@ -66,7 +66,7 @@ TEST_CASE("When accel bias and scale is calculated",
   AccelCalibrationBuffer_t buffer;
   AccelCalibrationData_t data;
   accelBufferClear(&buffer);
-  uint8_t range = 2; //+-2G
+  uint8_t range = imu_hal_get_accel_range(); //+-2G
   // int16_t oneGRead = INT16_MAX/range;
   // int16_t negOneGRead = INT16_MIN/range;
   int16_t readValpos = (INT16_MAX / range) * 0.95;
@@ -95,6 +95,10 @@ TEST_CASE("When accel bias and scale is calculated",
       }
     }
   }
+  ESP_LOGI("DEBUG", "%ld, %d", buffer.sums[POSITIVE][X_AXIS],
+           buffer.samples[POSITIVE][X_AXIS]);
+  ESP_LOGI("DEBUG", "%ld, %d", buffer.sums[NEGATIVE][X_AXIS],
+           buffer.samples[NEGATIVE][X_AXIS]);
   accelCalculateBiasAndScale(&buffer, &data);
   TEST_ASSERT_EQUAL_INT16_ARRAY(testBias, data.bias, NO_AXIS);
   TEST_ASSERT_EQUAL_INT16_ARRAY(testScale, data.scale, NO_AXIS);
@@ -115,7 +119,7 @@ TEST_CASE("When accel bias and scale is applied",
   int16_t expectedRead = scale / ACCEL_SCALE_FACTOR * posRead + bias;
   Vector16_t testScaledBiasedOutput = {expectedRead, expectedRead,
                                        expectedRead};
-  accelApplyBiasAndScale(read, &data);
+  accelApplyBiasAndScale(&read, &data);
   TEST_ASSERT_EQUAL_INT16_ARRAY(testScaledBiasedOutput, read[ACCEL], NO_AXIS);
 }
 
@@ -173,7 +177,7 @@ TEST_CASE("When mag read transformed with matrix",
   MagCalibrationData_t data;
   ImuData_t read = {{1, 1, 1}, {1, 1, 1}, {18, -14, 48}};
   Vector16_t testTransformed = {35, -47, 48};
-  magApplyTransformMatrix(read, &data);
+  magApplyTransformMatrix(&read);
   TEST_ASSERT_EQUAL_INT16_ARRAY(testTransformed, read[MAG], NO_AXIS);
 }
 

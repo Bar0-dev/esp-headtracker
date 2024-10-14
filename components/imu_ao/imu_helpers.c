@@ -12,7 +12,7 @@ static float map_int16_to_range(int16_t value, int16_t range) {
 }
 
 // TODO: change mag mapping to 32760
-void convertRaw(ImuData_t *raw, fImuData_t *out) {
+void convertRaw(ImuData_t *raw, FusionSensorData_t *out) {
   uint16_t rangeAccel = (int16_t)imu_hal_get_accel_range();
   uint16_t rangeGyro = imu_hal_get_gyro_range();
   uint16_t rangeMag = imu_hal_get_mag_range();

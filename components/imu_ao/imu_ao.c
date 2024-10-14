@@ -1,4 +1,6 @@
 #include "imu_ao.h"
+#include "FusionAhrs.h"
+#include "FusionOffset.h"
 #include "core.h"
 #include "esp_ao.h"
 #include "events_broker.h"
@@ -102,6 +104,20 @@ State Imu_read(Imu *const me, Event const *const e) {
   State status;
   Event evt = {LAST_EVENT_FLAG, (void *)0};
   Packet_t packet = {.length = 0};
+  static FusionOffset offset;
+  static FusionAhrs ahrs;
+  FusionOffsetInitialise(&offset, SAMPLE_RATE);
+  FusionAhrsInitialise(&ahrs); // Set AHRS algorithm settings
+  const FusionAhrsSettings settings = {
+      .convention = FusionConventionNwu,
+      .gain = 0.5f,
+      .gyroscopeRange = 1000.0f,
+      .accelerationRejection = 10.0f,
+      .magneticRejection = 10.0f,
+      .recoveryTriggerPeriod = 5 * SAMPLE_RATE, /* 5 seconds */
+  };
+  FusionAhrsSetSettings(&ahrs, &settings);
+
   switch (e->sig) {
   case ENTRY_SIG:
     imu_hal_init_dbuffer();
@@ -113,22 +129,35 @@ State Imu_read(Imu *const me, Event const *const e) {
 
   case EV_IMU_HAL_PROCESS_BUFFER:
     int64_t timeDelta;
+    float timeDeltaInS;
     Buffer_t *readBuffer = imu_hal_read_buffer();
     ImuData_t *data = &readBuffer->data[0].read;
-    fImuData_t converted;
+    FusionSensorData_t converted;
     for (uint8_t index = 0; index < readBuffer->length; index++) {
       timeDelta = readBuffer->data[index].timeDelta;
+      timeDeltaInS = (float)timeDelta / MICROSECONDS_IN_SECOND;
       data = &readBuffer->data[index].read;
       accelApplyBiasAndScale(data, &me->calibration.accel);
       gyroApplyBias(data, &me->calibration.gyro);
       magApplyTransformMatrix(data);
       convertRaw(data, &converted);
+      converted.sensor.gyro =
+          FusionOffsetUpdate(&offset, converted.sensor.gyro);
+      FusionAhrsUpdate(&ahrs, converted.sensor.gyro, converted.sensor.accel,
+                       converted.sensor.mag, timeDeltaInS);
     }
-    // ESP_LOGI("DUBUG", "%0.1f, %0.1f, %0.1f,", converted.sensor.mag.axis.x,
-    //          converted.sensor.mag.axis.y, converted.sensor.mag.axis.z);
-    // ESP_LOGI("DUBUG", "%d, %d, %d,", (*data)[MAG][X_AXIS],
-    // (*data)[MAG][Y_AXIS],
-    //          (*data)[MAG][Z_AXIS]);
+    const FusionEuler euler =
+        FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
+    // ESP_LOGI("DUBUG", "%0.1f, %0.1f, %0.1f,", euler.angle.pitch,
+    //          euler.angle.roll, euler.angle.yaw);
+    ESP_LOGI(
+        "DUBUG",
+        "%0.1f, %0.1f, %0.1f :: %0.1f, %0.1f, %0.1f :: %0.1f, %0.1f, %0.1f",
+        converted.sensor.accel.axis.x, converted.sensor.accel.axis.y,
+        converted.sensor.accel.axis.z, converted.sensor.gyro.axis.x,
+        converted.sensor.gyro.axis.y, converted.sensor.gyro.axis.z,
+        converted.sensor.mag.axis.x, converted.sensor.mag.axis.y,
+        converted.sensor.mag.axis.z);
 
     prepareRawPacket(*data, &packet);
     evt.sig = EV_IMU_SEND_DATA;
@@ -187,8 +216,6 @@ State Imu_cal_accel(Imu *const me, Event const *const e) {
 
   switch (e->sig) {
   case ENTRY_SIG:
-    imu_hal_init_dbuffer();
-    imu_hal_enable_interrupt();
     accelBufferClear(&buffer);
     TimeEvent_arm(&me->preCalibrationTimer);
     axis = X_AXIS;
@@ -201,6 +228,8 @@ State Imu_cal_accel(Imu *const me, Event const *const e) {
     break;
 
   case IMU_PRE_CALIBRATION_TIMEOUT_SIG:
+    imu_hal_init_dbuffer();
+    imu_hal_enable_interrupt();
     evt.sig = EV_IMU_CALIBRATION_IN_PROGRESS;
     Active_post(AO_Broker, &evt);
     TimeEvent_arm(&me->calibrationTimer);
