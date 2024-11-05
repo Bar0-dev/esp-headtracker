@@ -108,9 +108,9 @@ void accelApplyBiasAndScale(ImuData_t *output, AccelCalibrationData_t *data) {
   Sensor_t sensor = ACCEL;
   for (Axis_t axis = X_AXIS; axis < NO_AXIS; axis++) {
     (*output)[sensor][axis] =
-        (int16_t)(data->scale[axis] * (*output)[sensor][axis] /
-                  ACCEL_SCALE_FACTOR) +
-        data->bias[axis];
+        (int16_t)(((float)data->scale[axis] / ACCEL_SCALE_FACTOR) *
+                      (*output)[sensor][axis] +
+                  data->bias[axis]);
   }
 }
 

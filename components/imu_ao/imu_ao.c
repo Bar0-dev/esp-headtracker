@@ -146,23 +146,26 @@ State Imu_read(Imu *const me, Event const *const e) {
       FusionAhrsUpdate(&ahrs, converted.sensor.gyro, converted.sensor.accel,
                        converted.sensor.mag, timeDeltaInS);
     }
-    const FusionEuler euler =
-        FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
+    // const FusionEuler euler =
+    //     FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
     // ESP_LOGI("DUBUG", "%0.1f, %0.1f, %0.1f,", euler.angle.pitch,
     //          euler.angle.roll, euler.angle.yaw);
-    ESP_LOGI(
-        "DUBUG",
-        "%0.1f, %0.1f, %0.1f :: %0.1f, %0.1f, %0.1f :: %0.1f, %0.1f, %0.1f",
-        converted.sensor.accel.axis.x, converted.sensor.accel.axis.y,
-        converted.sensor.accel.axis.z, converted.sensor.gyro.axis.x,
-        converted.sensor.gyro.axis.y, converted.sensor.gyro.axis.z,
-        converted.sensor.mag.axis.x, converted.sensor.mag.axis.y,
-        converted.sensor.mag.axis.z);
+    // ESP_LOGI(
+    //     "DUBUG",
+    //     "%0.1f, %0.1f, %0.1f :: %0.1f, %0.1f, %0.1f :: %0.1f, %0.1f, %0.1f",
+    //     converted.sensor.accel.axis.x, converted.sensor.accel.axis.y,
+    //     converted.sensor.accel.axis.z, converted.sensor.gyro.axis.x,
+    //     converted.sensor.gyro.axis.y, converted.sensor.gyro.axis.z,
+    //     converted.sensor.mag.axis.x, converted.sensor.mag.axis.y,
+    //     converted.sensor.mag.axis.z);
 
-    prepareRawPacket(*data, &packet);
-    evt.sig = EV_IMU_SEND_DATA;
-    evt.payload = &packet;
-    Active_post(AO_Broker, &evt);
+    ESP_LOGI("DUBUG", "%d, %d, %d", readBuffer->data[0].read[ACCEL][0],
+             readBuffer->data[0].read[ACCEL][1],
+             readBuffer->data[0].read[ACCEL][2]);
+    // prepareRawPacket(*data, &packet);
+    // evt.sig = EV_IMU_SEND_DATA;
+    // evt.payload = &packet;
+    // Active_post(AO_Broker, &evt);
     status = HANDLED_STATUS;
     break;
 

@@ -12,5 +12,7 @@ uint32_t measure_execution_time1(function1_ptr_t func, void *args,
 uint32_t measure_execution_time2(function2_ptr_t func, void *arg1, void *arg2,
                                  char *funcName);
 void set_buffer_instance(Buffer_t *buffer, ImuData_t read);
+void calculateScaleBiasTest(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
+                            int16_t *scale, int16_t *bias);
 
 #endif // !TEST_HELPERS

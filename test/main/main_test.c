@@ -26,10 +26,9 @@ void app_main(void) {
   // unity_run_test_by_name("Mean of an empty array is zero");
   // UNITY_END();
 
-  // print_banner("Running tests with [mpuConf] tag");
+  // print_banner("Running tests with [calibration_states] tag");
   // UNITY_BEGIN();
-  // unity_run_tests_by_tag("[mpuConf]", false);
-  // unity_run_tests_by_tag("[perf]", false);
+  // unity_run_tests_by_tag("[calibration_states]", false);
   // UNITY_END();
 
   // print_banner("Running tests without [fails] tag");

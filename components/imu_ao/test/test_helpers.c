@@ -58,3 +58,11 @@ void set_buffer_instance(Buffer_t *buffer, ImuData_t read) {
   }
   buffer->length = MAX_BUFFER_SIZE;
 }
+
+void calculateScaleBiasTest(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
+                            int16_t *scale, int16_t *bias) {
+  float lscale = (float)(y2 - y1) / (float)(x2 - x1);
+  printf("lscale: %f\n", lscale);
+  *scale = (int16_t)(1000 * lscale);
+  *bias = y1 - lscale * x1;
+}

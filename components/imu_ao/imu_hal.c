@@ -16,7 +16,7 @@
 const char *TAG = "IMU_HAL";
 
 static const Config_t mpu_conf_1[] = {
-    {SMPLRT_DIV, 0},
+    {SMPLRT_DIV, 2},
     {CONFIG, (ALLOW_OVERFLOW << FIFO_MODE) | (FSYNC_DISABLED << EXT_SYNC_SET) |
                  (DLPF_10Hz << DLPF_CFG)},
     {GYRO_CONFIG, (GYRO_FCHOICE_B_DISABLED << GYRO_FCHOICE_B) |
@@ -171,6 +171,7 @@ void imu_hal_init_dbuffer() {
 
 void imu_hal_swap_dbuffer() {
   Buffer_t *tempBufferP = dBuffer.writeBuffer;
+  dBuffer.readBuffer->length = dBuffer.writeBuffer->length;
   dBuffer.writeBuffer = dBuffer.readBuffer;
   dBuffer.readBuffer = tempBufferP;
   dBuffer.writeBuffer->length = 0;
