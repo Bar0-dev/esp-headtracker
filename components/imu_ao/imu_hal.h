@@ -10,11 +10,11 @@
 #define ACCEL_RANGE_SETTING ACCEL_2G
 #define GYRO_RANGE_SETTING GYRO_1000DPS
 #define MPU_INT_PIN 26
-#define MAX_BUFFER_SIZE 20
+#define MAX_BUFFER_SIZE 10
 
 // this must be greater than 1; in mpu registers SAMPLE_RATE =
 // INTERNAL_SAMPLE_RATE/(1+SAMPLE_DIVIDER_REGISTER_VALUE)
-#define SAMPLE_RATE_DIVIDER 1
+#define SAMPLE_RATE_DIVIDER 2
 
 typedef struct {
   uint8_t conf_reg;

@@ -8,7 +8,7 @@
 #include "nvs_helpers.h"
 #include <stdio.h>
 
-#define READ_PERIOD 10 // calculation period in ms
+#define SEND_ORIENTATION_PERIOD 20 // send pacekt period in ms
 #define PRE_CALIBRATION_PERIOD                                                 \
   5 * 1000 // calculation period in ms (x*1000[ms] = x[s])
 #define ACCEL_GYRO_CALIBRATION_PERIOD                                          \
@@ -22,12 +22,14 @@ typedef struct {
   CalibtrationData_t calibration;
   TimeEvent calibrationTimer;
   TimeEvent preCalibrationTimer;
+  TimeEvent orientationSendTimer;
 } Imu;
 
 enum ImuEventSignals {
   IMU_CALIBRATION_TIMEOUT_SIG = LAST_EVENT_FLAG,
   IMU_PRE_CALIBRATION_TIMEOUT_SIG,
   IMU_AXIS_CAL_DONE,
+  IMU_ORIENTATION_PACKET_SEND_TIMEOUT_SIG,
 };
 
 void Imu_ctor(Imu *const me);

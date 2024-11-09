@@ -57,6 +57,8 @@ static void addFloatValueToPacket(float val, Packet_t *packet,
 }
 
 void prepareRawPacket(FusionEuler const *euler, Packet_t *packet) {
+  memset(packet->message, 0, sizeof(packet->message));
+  packet->size = 0;
   float xyz = 0.0;
   for (uint8_t index = 0; index < 3; index++) {
     addFloatValueToPacket(xyz, packet, true);

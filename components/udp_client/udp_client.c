@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include <string.h>
 // TODO: clean up this includes
-#include "core.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
@@ -33,9 +32,6 @@ static void udp_client_create_socket() {
     ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
   }
 
-  int send_buf_size = 100; // Example buffer size, adjust as needed
-  setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &send_buf_size,
-             sizeof(send_buf_size));
   // Set timeout
   struct timeval timeout;
   timeout.tv_sec = 10;
@@ -52,13 +48,13 @@ void udp_client_close_socket() {
   }
 }
 
-void udp_client_send(char *msg, uint64_t size) {
+void udp_client_send(Packet_t *packet) {
   struct sockaddr_in dest_addr;
   dest_addr.sin_addr.s_addr = inet_addr(HOST_IP_ADDR);
   dest_addr.sin_family = AF_INET;
   dest_addr.sin_port = htons(PORT);
-  int err = sendto(sock, msg, size, 0, (struct sockaddr *)&dest_addr,
-                   sizeof(dest_addr));
+  int err = sendto(sock, packet->message, packet->size, 0,
+                   (struct sockaddr *)&dest_addr, sizeof(dest_addr));
   if (err < 0) {
     ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
   }

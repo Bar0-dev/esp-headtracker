@@ -4,6 +4,7 @@
 #include "core.h"
 #include "esp_ao.h"
 #include "events_broker.h"
+#include "freertos/projdefs.h"
 #include "imu_hal.h"
 #include "imu_helpers.h"
 #include <stdint.h>
@@ -100,9 +101,11 @@ State Imu_idle(Imu *const me, Event const *const e) {
   return status;
 }
 
+Event dataEvt;
 State Imu_read(Imu *const me, Event const *const e) {
   State status;
   Event evt = {LAST_EVENT_FLAG, (void *)0};
+  Packet_t packet;
   static FusionOffset offset;
   static FusionAhrs ahrs;
   const FusionAhrsSettings settings = {
@@ -123,20 +126,18 @@ State Imu_read(Imu *const me, Event const *const e) {
     FusionOffsetInitialise(&offset, SAMPLE_RATE);
     FusionAhrsInitialise(&ahrs); // Set AHRS algorithm settings
     FusionAhrsSetSettings(&ahrs, &settings);
+    TimeEvent_arm(&me->orientationSendTimer);
     status = HANDLED_STATUS;
     break;
 
   case EV_IMU_HAL_PROCESS_BUFFER:
-    Event evtImu;
-    Packet_t packet = {.size = 0, .message = "\0"};
-    int64_t timeDelta;
     float timeDeltaInS;
     Buffer_t *readBuffer = imu_hal_read_buffer();
     ImuData_t *data = &readBuffer->data[0].read;
     FusionSensorData_t converted;
     for (uint8_t index = 0; index < readBuffer->length; index++) {
-      timeDelta = readBuffer->data[index].timeDelta;
-      timeDeltaInS = (float)timeDelta / MICROSECONDS_IN_SECOND;
+      timeDeltaInS =
+          (float)(readBuffer->data[index].timeDelta) / MICROSECONDS_IN_SECOND;
       data = &readBuffer->data[index].read;
       accelApplyBiasAndScale(data, &me->calibration.accel);
       gyroApplyBias(data, &me->calibration.gyro);
@@ -147,16 +148,21 @@ State Imu_read(Imu *const me, Event const *const e) {
       FusionAhrsUpdate(&ahrs, converted.sensor.gyro, converted.sensor.accel,
                        converted.sensor.mag, timeDeltaInS);
     }
+    status = HANDLED_STATUS;
+    break;
+
+  case IMU_ORIENTATION_PACKET_SEND_TIMEOUT_SIG:
     const FusionEuler euler =
         FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
     prepareRawPacket(&euler, &packet);
-    evtImu.sig = EV_IMU_SEND_DATA;
-    evtImu.payload = &packet;
-    Active_post(AO_Broker, &evtImu);
+    dataEvt.sig = EV_IMU_SEND_DATA;
+    dataEvt.payload = &packet;
+    Active_post(AO_Broker, &dataEvt);
     status = HANDLED_STATUS;
     break;
 
   case EXIT_SIG:
+    TimeEvent_disarm(&me->orientationSendTimer);
     imu_hal_disable_interrupt();
     status = HANDLED_STATUS;
     break;
@@ -327,6 +333,9 @@ void Imu_ctor(Imu *const me) {
   TimeEvent_ctor(&me->preCalibrationTimer, "IMU pre calibration timer",
                  (TickType_t)(PRE_CALIBRATION_PERIOD / portTICK_PERIOD_MS),
                  pdFALSE, IMU_PRE_CALIBRATION_TIMEOUT_SIG, &me->super);
+  TimeEvent_ctor(&me->orientationSendTimer, "IMU send orientation timer",
+                 (TickType_t)(SEND_ORIENTATION_PERIOD / portTICK_PERIOD_MS),
+                 pdTRUE, IMU_ORIENTATION_PACKET_SEND_TIMEOUT_SIG, &me->super);
   imu_hal_init();
   calibrationSetNotCompleted(&me->calibration);
 }

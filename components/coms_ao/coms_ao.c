@@ -14,6 +14,7 @@ State Coms_init(Coms *const me, Event const *const e) {
 
 State Coms_idle(Coms *const me, Event const *const e) {
   State status;
+  Packet_t receivedPacket;
   Event evt = {LAST_EVENT_FLAG, (void *)0};
 
   switch (e->sig) {
@@ -36,12 +37,8 @@ State Coms_idle(Coms *const me, Event const *const e) {
     break;
 
   case EV_IMU_SEND_DATA:
-    char message[MAX_PACKET_SIZE];
-    uint64_t messageSize;
     Packet_t *eventPayload = (Packet_t *)e->payload;
-    strcpy(message, eventPayload->message);
-    messageSize = eventPayload->size;
-    udp_client_send(message, messageSize);
+    udp_client_send(eventPayload);
     status = HANDLED_STATUS;
     break;
 
