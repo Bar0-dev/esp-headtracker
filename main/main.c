@@ -35,7 +35,7 @@ void app_main(void) {
   Active_start(AO_Imu, "Imu thread", 4096, 21, 1, 20);
 
   Coms_ctor(&coms);
-  Active_start(AO_Coms, "Coms thread", 4096, 19, tskNO_AFFINITY, 10);
+  Active_start(AO_Coms, "Coms thread", 8192, 19, tskNO_AFFINITY, 10);
 
   Controller_ctor(&controller);
   Active_start(AO_Controller, "Controller thread", 4096, 3, tskNO_AFFINITY, 10);

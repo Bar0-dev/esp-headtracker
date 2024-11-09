@@ -67,7 +67,7 @@ typedef union {
 void convertRaw(ImuData_t *raw, FusionSensorData_t *out);
 void calibrationSetNotCompleted(CalibtrationData_t *calData);
 void getAxisName(Axis_t axis, AxisString_t axisString);
-void prepareRawPacket(ImuData_t data, Packet_t *packet);
+void prepareRawPacket(FusionEuler const *euler, Packet_t *packet);
 void accelBufferClear(AccelCalibrationBuffer_t *buffer);
 void accelUpdateBuffer(Buffer_t *sensorBuffer, AccelCalibrationBuffer_t *buffer,
                        Axis_t axis, Direction_t direction);

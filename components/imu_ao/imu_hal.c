@@ -16,7 +16,7 @@
 const char *TAG = "IMU_HAL";
 
 static const Config_t mpu_conf_1[] = {
-    {SMPLRT_DIV, 2},
+    {SMPLRT_DIV, (SAMPLE_RATE_DIVIDER - 1)},
     {CONFIG, (ALLOW_OVERFLOW << FIFO_MODE) | (FSYNC_DISABLED << EXT_SYNC_SET) |
                  (DLPF_10Hz << DLPF_CFG)},
     {GYRO_CONFIG, (GYRO_FCHOICE_B_DISABLED << GYRO_FCHOICE_B) |

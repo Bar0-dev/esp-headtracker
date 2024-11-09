@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define MAX_PACKET_SIZE 200
+#define MAX_PACKET_SIZE 50
 #define MAX_SINGLE_READING_SIZE 8
 #define MAX_MAG_CALIBRATION_SAMPLES 800 // equivalent of 8s of calibration
 #define BASE_MATRIX_NO_OF_COLUMNS 3
@@ -11,8 +11,8 @@
 #define MICROSECONDS_IN_SECOND 1000000
 
 typedef struct {
-  uint8_t length;
-  char payload[MAX_PACKET_SIZE];
+  uint64_t size;
+  char message[MAX_PACKET_SIZE];
 } Packet_t;
 
 typedef enum { X_AXIS, Y_AXIS, Z_AXIS, NO_AXIS } Axis_t;

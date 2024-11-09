@@ -103,11 +103,8 @@ State Imu_idle(Imu *const me, Event const *const e) {
 State Imu_read(Imu *const me, Event const *const e) {
   State status;
   Event evt = {LAST_EVENT_FLAG, (void *)0};
-  Packet_t packet = {.length = 0};
   static FusionOffset offset;
   static FusionAhrs ahrs;
-  FusionOffsetInitialise(&offset, SAMPLE_RATE);
-  FusionAhrsInitialise(&ahrs); // Set AHRS algorithm settings
   const FusionAhrsSettings settings = {
       .convention = FusionConventionNwu,
       .gain = 0.5f,
@@ -116,7 +113,6 @@ State Imu_read(Imu *const me, Event const *const e) {
       .magneticRejection = 10.0f,
       .recoveryTriggerPeriod = 5 * SAMPLE_RATE, /* 5 seconds */
   };
-  FusionAhrsSetSettings(&ahrs, &settings);
 
   switch (e->sig) {
   case ENTRY_SIG:
@@ -124,10 +120,15 @@ State Imu_read(Imu *const me, Event const *const e) {
     imu_hal_enable_interrupt();
     evt.sig = EV_IMU_READING;
     Active_post(AO_Broker, &evt);
+    FusionOffsetInitialise(&offset, SAMPLE_RATE);
+    FusionAhrsInitialise(&ahrs); // Set AHRS algorithm settings
+    FusionAhrsSetSettings(&ahrs, &settings);
     status = HANDLED_STATUS;
     break;
 
   case EV_IMU_HAL_PROCESS_BUFFER:
+    Event evtImu;
+    Packet_t packet = {.size = 0, .message = "\0"};
     int64_t timeDelta;
     float timeDeltaInS;
     Buffer_t *readBuffer = imu_hal_read_buffer();
@@ -146,26 +147,12 @@ State Imu_read(Imu *const me, Event const *const e) {
       FusionAhrsUpdate(&ahrs, converted.sensor.gyro, converted.sensor.accel,
                        converted.sensor.mag, timeDeltaInS);
     }
-    // const FusionEuler euler =
-    //     FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
-    // ESP_LOGI("DUBUG", "%0.1f, %0.1f, %0.1f,", euler.angle.pitch,
-    //          euler.angle.roll, euler.angle.yaw);
-    // ESP_LOGI(
-    //     "DUBUG",
-    //     "%0.1f, %0.1f, %0.1f :: %0.1f, %0.1f, %0.1f :: %0.1f, %0.1f, %0.1f",
-    //     converted.sensor.accel.axis.x, converted.sensor.accel.axis.y,
-    //     converted.sensor.accel.axis.z, converted.sensor.gyro.axis.x,
-    //     converted.sensor.gyro.axis.y, converted.sensor.gyro.axis.z,
-    //     converted.sensor.mag.axis.x, converted.sensor.mag.axis.y,
-    //     converted.sensor.mag.axis.z);
-
-    ESP_LOGI("DUBUG", "%d, %d, %d", readBuffer->data[0].read[ACCEL][0],
-             readBuffer->data[0].read[ACCEL][1],
-             readBuffer->data[0].read[ACCEL][2]);
-    // prepareRawPacket(*data, &packet);
-    // evt.sig = EV_IMU_SEND_DATA;
-    // evt.payload = &packet;
-    // Active_post(AO_Broker, &evt);
+    const FusionEuler euler =
+        FusionQuaternionToEuler(FusionAhrsGetQuaternion(&ahrs));
+    prepareRawPacket(&euler, &packet);
+    evtImu.sig = EV_IMU_SEND_DATA;
+    evtImu.payload = &packet;
+    Active_post(AO_Broker, &evtImu);
     status = HANDLED_STATUS;
     break;
 
@@ -240,6 +227,7 @@ State Imu_cal_accel(Imu *const me, Event const *const e) {
     break;
 
   case IMU_CALIBRATION_TIMEOUT_SIG:
+    imu_hal_disable_interrupt();
     direction++;
     if (direction >= NO_DIRECTION) {
       direction = POSITIVE;

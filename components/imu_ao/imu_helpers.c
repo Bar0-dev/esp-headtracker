@@ -1,10 +1,13 @@
 #include "imu_helpers.h"
+#include "FusionMath.h"
 #include "core.h"
 #include "esp_log.h"
 #include "imu_hal.h"
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 
 static float map_int16_to_range(int16_t value, int16_t range) {
   return ((float)value - INT16_MIN) * 2 * range / (INT16_MAX - INT16_MIN) -
@@ -43,18 +46,27 @@ void calibrationSetNotCompleted(CalibtrationData_t *calData) {
   calData->mag.completed = false;
 }
 
-void prepareRawPacket(ImuData_t data, Packet_t *packet) {
+static void addFloatValueToPacket(float val, Packet_t *packet,
+                                  bool addSeperator) {
   char buffer[MAX_SINGLE_READING_SIZE];
-  // for (Sensor_t sensor = ACCEL; sensor < NO_SENSOR; sensor++) {
-  for (Sensor_t sensor = ACCEL; sensor < NO_SENSOR; sensor++) {
-    for (Axis_t axis = X_AXIS; axis < NO_AXIS; axis++) {
-      sprintf(buffer, "%d,", data[sensor][axis]);
-      packet->length += strlen(buffer);
-      strcat(packet->payload, buffer);
-    }
+  sprintf(buffer, "%.1f", val);
+  strcat(packet->message, buffer);
+  if (addSeperator) {
+    strcat(packet->message, ",");
   }
-  strcat(packet->payload, "\n");
-  packet->length++;
+}
+
+void prepareRawPacket(FusionEuler const *euler, Packet_t *packet) {
+  float xyz = 0.0;
+  for (uint8_t index = 0; index < 3; index++) {
+    addFloatValueToPacket(xyz, packet, true);
+  }
+  addFloatValueToPacket(euler->angle.yaw, packet, true);
+  addFloatValueToPacket(euler->angle.pitch, packet, true);
+  addFloatValueToPacket(euler->angle.roll, packet, false);
+  strcat(packet->message, "\n");
+  packet->size = strlen(packet->message);
+  assert(packet->size < MAX_PACKET_SIZE);
 }
 
 void accelBufferClear(AccelCalibrationBuffer_t *buffer) {
