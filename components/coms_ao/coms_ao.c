@@ -1,6 +1,5 @@
 #include "coms_ao.h"
 #include "core.h"
-#include "udp_client.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -14,7 +13,6 @@ State Coms_init(Coms *const me, Event const *const e) {
 
 State Coms_idle(Coms *const me, Event const *const e) {
   State status;
-  Packet_t receivedPacket;
   Event evt = {LAST_EVENT_FLAG, (void *)0};
 
   switch (e->sig) {
@@ -25,20 +23,16 @@ State Coms_idle(Coms *const me, Event const *const e) {
     break;
 
   case EV_CONTROLLER_CONNECT_DEVICE:
-    prov_mgr_init();
     evt.sig = WIFI_CONNECTED_SIG;
     Active_post(&me->super, &evt);
     status = HANDLED_STATUS;
     break;
 
   case WIFI_CONNECTED_SIG:
-    udp_client_init();
     status = HANDLED_STATUS;
     break;
 
   case EV_IMU_SEND_DATA:
-    Packet_t *eventPayload = (Packet_t *)e->payload;
-    udp_client_send(eventPayload);
     status = HANDLED_STATUS;
     break;
 
