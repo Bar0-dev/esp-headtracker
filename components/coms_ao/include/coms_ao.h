@@ -5,7 +5,7 @@
 #include "events_broker.h"
 
 enum CommsPrivateSignals {
-  WIFI_CONNECTED_SIG = LAST_EVENT_FLAG,
+  BT_CONNECTED_SIG = LAST_EVENT_FLAG,
 };
 
 typedef struct {

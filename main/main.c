@@ -66,6 +66,8 @@ void app_main(void) {
                    AO_Imu);
   Broker_subscribe(&broker, &(Event){EV_CONTROLLER_CONNECT_DEVICE, (void *)0},
                    AO_Coms);
+  Broker_subscribe(
+      &broker, &(Event){EV_CONTROLLER_DISCONNECT_DEVICE, (void *)0}, AO_Coms);
   Broker_subscribe(&broker, &(Event){EV_IMU_SEND_DATA, (void *)0}, AO_Coms);
 
   // Broker_subscribe(&broker, &(Event){ EV_IMU_IDLE , (void*)0 }, AO_Led);

@@ -1,6 +1,14 @@
 #include "bt_stack.h"
+#include "esp_bt.h"
+#include "esp_bt_main.h"
+#include "esp_gap_bt_api.h"
 #include "esp_log.h"
 #include "esp_spp_api.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+#include <stdint.h>
+#include <stdio.h>
+#include <sys/types.h>
 
 #define SPP_TAG "SPP"
 #define SPP_SERVER_NAME "SPP_SERVER"
@@ -10,14 +18,10 @@ static const esp_spp_mode_t esp_spp_mode = ESP_SPP_MODE_CB;
 static const esp_spp_sec_t sec_mask = ESP_SPP_SEC_AUTHENTICATE;
 static const esp_spp_role_t role_slave = ESP_SPP_ROLE_SLAVE;
 
-esp_spp_cfg_t bt_spp_cfg = {
-    .mode = esp_spp_mode,
-    .enable_l2cap_ertm = true,
-    .tx_buffer_size = 0, /* Only used for ESP_SPP_MODE_VFS mode */
-};
+static uint32_t handle;
+static bool congested;
 
 static void esp_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param) {
-  char bda_str[18] = {0};
 
   switch (event) {
   case ESP_SPP_INIT_EVT:
@@ -72,9 +76,11 @@ static void esp_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param) {
     ESP_LOGI(SPP_TAG, "ESP_SPP_CONG_EVT");
     break;
   case ESP_SPP_WRITE_EVT:
-    ESP_LOGI(SPP_TAG, "ESP_SPP_WRITE_EVT");
+    congested = param->write.cong;
+    ESP_LOGI(SPP_TAG, "ESP_SPP_WRITE_EVT, congested: %d", congested);
     break;
   case ESP_SPP_SRV_OPEN_EVT:
+    handle = param->srv_open.handle;
     ESP_LOGI(SPP_TAG, "ESP_SPP_SRV_OPEN_EVT status:%d", param->srv_open.status);
     break;
   case ESP_SPP_SRV_STOP_EVT:
@@ -89,14 +95,12 @@ static void esp_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param) {
 }
 
 void esp_bt_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param) {
-  char bda_str[18] = {0};
 
   switch (event) {
   case ESP_BT_GAP_AUTH_CMPL_EVT: {
     if (param->auth_cmpl.stat == ESP_BT_STATUS_SUCCESS) {
-      ESP_LOGI(SPP_TAG, "authentication success: %s bda:[%s]",
-               param->auth_cmpl.device_name,
-               bda2str(param->auth_cmpl.bda, bda_str, sizeof(bda_str)));
+      ESP_LOGI(SPP_TAG, "authentication success: %s",
+               param->auth_cmpl.device_name);
     } else {
       ESP_LOGE(SPP_TAG, "authentication failed, status:%d",
                param->auth_cmpl.stat);
@@ -121,8 +125,6 @@ void esp_bt_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param) {
     }
     break;
   }
-
-#if (CONFIG_EXAMPLE_SSP_ENABLED == true)
   case ESP_BT_GAP_CFM_REQ_EVT:
     ESP_LOGI(
         SPP_TAG,
@@ -137,12 +139,9 @@ void esp_bt_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param) {
   case ESP_BT_GAP_KEY_REQ_EVT:
     ESP_LOGI(SPP_TAG, "ESP_BT_GAP_KEY_REQ_EVT Please enter passkey!");
     break;
-#endif
 
   case ESP_BT_GAP_MODE_CHG_EVT:
-    ESP_LOGI(SPP_TAG, "ESP_BT_GAP_MODE_CHG_EVT mode:%d bda:[%s]",
-             param->mode_chg.mode,
-             bda2str(param->mode_chg.bda, bda_str, sizeof(bda_str)));
+    ESP_LOGI(SPP_TAG, "ESP_BT_GAP_MODE_CHG_EVT mode:%d", param->mode_chg.mode);
     break;
 
   default: {
@@ -153,8 +152,8 @@ void esp_bt_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param) {
   return;
 }
 
-void app_main(void) {
-  char bda_str[18] = {0};
+void bt_stack_init(void) {
+  congested = true;
   esp_err_t ret = nvs_flash_init();
   if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
       ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -179,9 +178,6 @@ void app_main(void) {
   }
 
   esp_bluedroid_config_t bluedroid_cfg = BT_BLUEDROID_INIT_CONFIG_DEFAULT();
-#if (CONFIG_EXAMPLE_SSP_ENABLED == false)
-  bluedroid_cfg.ssp_en = false;
-#endif
   if ((ret = esp_bluedroid_init_with_cfg(&bluedroid_cfg)) != ESP_OK) {
     ESP_LOGE(SPP_TAG, "%s initialize bluedroid failed: %s", __func__,
              esp_err_to_name(ret));
@@ -208,7 +204,7 @@ void app_main(void) {
 
   esp_spp_cfg_t bt_spp_cfg = {
       .mode = esp_spp_mode,
-      .enable_l2cap_ertm = esp_spp_enable_l2cap_ertm,
+      .enable_l2cap_ertm = true,
       .tx_buffer_size = 0, /* Only used for ESP_SPP_MODE_VFS mode */
   };
   if ((ret = esp_spp_enhanced_init(&bt_spp_cfg)) != ESP_OK) {
@@ -216,12 +212,10 @@ void app_main(void) {
     return;
   }
 
-#if (CONFIG_EXAMPLE_SSP_ENABLED == true)
   /* Set default parameters for Secure Simple Pairing */
   esp_bt_sp_param_t param_type = ESP_BT_SP_IOCAP_MODE;
   esp_bt_io_cap_t iocap = ESP_BT_IO_CAP_IO;
   esp_bt_gap_set_security_param(param_type, &iocap, sizeof(uint8_t));
-#endif
 
   /*
    * Set default parameters for Legacy Pairing
@@ -230,8 +224,10 @@ void app_main(void) {
   esp_bt_pin_type_t pin_type = ESP_BT_PIN_TYPE_VARIABLE;
   esp_bt_pin_code_t pin_code;
   esp_bt_gap_set_pin(pin_type, 0, pin_code);
+}
 
-  ESP_LOGI(
-      SPP_TAG, "Own address:[%s]",
-      bda2str((uint8_t *)esp_bt_dev_get_address(), bda_str, sizeof(bda_str)));
+void bt_stack_write(uint8_t *msg, size_t size) {
+  if (congested) {
+    esp_spp_write(handle, size, msg);
+  }
 }
